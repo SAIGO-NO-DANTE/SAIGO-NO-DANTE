@@ -1,23 +1,23 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { AnimatePresence, useReducedMotion } from 'motion/react'
 import * as m from 'motion/react-m'
 import { Link } from '@/lib/i18n/navigation'
 import StaggerReveal, { staggerItem } from '@/features/catalog/components/StaggerReveal'
 import { useRouter, usePathname } from '@/lib/i18n/navigation'
 import Image from 'next/image'
-import KeywordIcon from '@/components/ui/KeywordIcon'
-import { getKeywordIconUrl } from '@/lib/constants/keywords'
-import { Search, X, ArrowDown, ArrowUp } from 'lucide-react'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 import Dropdown from '@/components/ui/Dropdown'
+import SearchBox from '@/components/ui/SearchBox'
 
 const DROPDOWN_BUTTON_STYLE = { minHeight: '2.5rem', background: '#120e09', borderColor: '#2e2417', fontFamily: 'var(--font-body)', fontSize: '0.8125rem' }
-import { Sinner, Identity, EGO, RARITY_ICON_MAP, SIN_COLORS, type SinType, GRADE_COLORS } from '@/lib/data/sinners'
+import { Sinner, Identity, EGO, RARITY_ICON_MAP } from '@/lib/data/sinners'
 import { useKeywordData } from '@/components/providers/KeywordProvider'
 import { useOwnedIdentities } from '@/hooks/useOwnedIdentities'
 import IdentityCard from '@/features/catalog/components/IdentityCard'
 import { countKeywords, filterSinnerEgos, filterSinnerIdentities, getRepresentativeKeywords, type OwnershipFilter } from '@/features/catalog'
+import { useSinnerSearch } from '@/features/catalog/hooks/useSinnerSearch'
 import { useTranslations, useLocale } from 'next-intl'
 import type { SupportedLang } from '@/lib/i18n/types'
 import { translations } from '@/lib/i18n/translations'
@@ -27,7 +27,6 @@ import styles from '@/styles/components/SinnerDetail.module.css'
 import SinnerHero from '@/features/catalog/components/SinnerHero'
 import AdSlot from '@/components/ads/AdSlot'
 import EgoDisplayCard from '@/components/cards/EgoDisplayCard'
-import { useAutocompleteKeys } from '@/hooks/useAutocompleteKeys'
 
 interface Props {
   sinner: Sinner
@@ -43,7 +42,7 @@ export default function SinnerDetailClient({ sinner, identities, egos }: Props) 
   const lang = locale as SupportedLang
   const shouldReduceMotion = useReducedMotion()
   useRoutePrefetch([`/${lang}/sinners/identities`, `/${lang}/sinners/ego`])
-  const { sinMap: kwSinMap, iconMap: kwIconMap } = useKeywordData()
+  const { iconMap: kwIconMap } = useKeywordData()
 
   const literarySource = (() => {
     const key = `sinner.source.${sinner.id}` as keyof typeof translations
@@ -57,11 +56,13 @@ export default function SinnerDetailClient({ sinner, identities, egos }: Props) 
   const [gacksung, setGacksung] = useState(false)
   const [rarityFilter, setRarityFilter] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set())
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
+  // null until the person flips the order: a search then lists the best match first
+  const [sortPick, setSortPick] = useState<'newest' | 'oldest' | null>(null)
+  const sortOrder = sortPick ?? 'newest'
+  // A search lists its own order until the toggle is used: the first press then keeps what the button shows (newest).
+  const toggleSort = () => setSortPick(sortPick === null && searchQuery.trim() ? 'newest' : sortOrder === 'newest' ? 'oldest' : 'newest')
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all')
   const ownedIds = useOwnedIdentities()
-  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // 초기 해시 읽기 + 브라우저 뒤로가기/앞으로가기 동기화
   useEffect(() => {
@@ -81,126 +82,23 @@ export default function SinnerDetailClient({ sinner, identities, egos }: Props) 
   // EGO 키워드 빈도 계산
   const egoKeywordStats = useMemo(() => countKeywords(egos.map(e => e.keywords)), [egos])
 
-  const toggleKeyword = (kw: string) => {
-    setSelectedKeywords(prev => {
-      const next = new Set(prev)
-      if (next.has(kw)) next.delete(kw)
-      else next.add(kw)
-      return next
-    })
-  }
-
-  const clearFilters = () => {
-    setSearchQuery('')
-    setSelectedKeywords(new Set())
-    setRarityFilter(null)
-    setOwnershipFilter('all')
-  }
-
-  const hasActiveFilters = searchQuery || selectedKeywords.size > 0 || rarityFilter || ownershipFilter !== 'all'
-
-  const filteredIdentities = useMemo(
-    () => filterSinnerIdentities(identities, { rarityFilter, searchQuery, selectedKeywords, sortOrder, ownershipFilter, ownedIds, lang }),
-    [identities, rarityFilter, searchQuery, selectedKeywords, sortOrder, ownershipFilter, ownedIds, lang],
-  )
-  const filteredEgos = useMemo(
-    () => filterSinnerEgos(egos, { searchQuery, selectedKeywords, sortOrder, ownershipFilter, ownedIds }),
-    [egos, searchQuery, selectedKeywords, sortOrder, ownershipFilter, ownedIds],
-  )
-
-  // 자동완성 드롭다운
-  const [showAutocomplete, setShowAutocomplete] = useState(false)
-  const [acIndex, setAcIndex] = useState(-1)
-  const autocompleteRef = useRef<HTMLDivElement>(null)
-  const autocompleteResults = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
-    if (!q) return { keywords: [] as { kw: string; count: number }[], identities: [] as Identity[], egos: [] as EGO[] }
-
-    const currentStats = tab === 'ego' ? egoKeywordStats : keywordStats
-    const matchedKw = currentStats
-      .filter(({ kw }) => kw.toLowerCase().startsWith(q))
-      .sort((a, b) => {
-        const aS = a.kw.toLowerCase().startsWith(q) ? 0 : 1
-        const bS = b.kw.toLowerCase().startsWith(q) ? 0 : 1
-        if (aS !== bS) return aS - bS
-        return a.kw.length - b.kw.length
-      })
-      .slice(0, 5)
-    const matchedIdent = identities
-      .filter(i => i.name_kr.toLowerCase().includes(q))
-      .sort((a, b) => {
-        const aS = a.name_kr.toLowerCase().startsWith(q) ? 0 : 1
-        const bS = b.name_kr.toLowerCase().startsWith(q) ? 0 : 1
-        if (aS !== bS) return aS - bS
-        return a.name_kr.length - b.name_kr.length
-      })
-      .slice(0, 5)
-    const matchedEgo = egos
-      .filter(e => e.name_kr.toLowerCase().includes(q))
-      .sort((a, b) => {
-        const aName = a.name_kr
-        const bName = b.name_kr
-        const aS = aName.toLowerCase().startsWith(q) ? 0 : 1
-        const bS = bName.toLowerCase().startsWith(q) ? 0 : 1
-        if (aS !== bS) return aS - bS
-        return aName.length - bName.length
-      })
-      .slice(0, 5)
-
-    return { keywords: matchedKw, identities: matchedIdent, egos: matchedEgo }
-  }, [searchQuery, keywordStats, egoKeywordStats, identities, egos, tab])
-
-  // 자동완성 항목을 평탄화 (키보드 탐색용)
-  type AcItem =
-    | { type: 'keyword'; kw: string; count: number }
-    | { type: 'identity'; data: Identity }
-    | { type: 'ego'; data: EGO }
-  const acItems = useMemo<AcItem[]>(() => [
-    ...autocompleteResults.keywords.map(k => ({ type: 'keyword' as const, kw: k.kw, count: k.count })),
-    ...autocompleteResults.identities.map(i => ({ type: 'identity' as const, data: i })),
-    ...autocompleteResults.egos.map(e => ({ type: 'ego' as const, data: e })),
-  ], [autocompleteResults])
-
-  const hasAutocompleteResults = acItems.length > 0
-
-  // 검색어 변경 시 첫 항목 자동 선택
-  useEffect(() => { setAcIndex(acItems.length > 0 ? 0 : -1) }, [searchQuery, acItems.length])
-
-  // 자동완성 항목 선택 실행
-  const executeAcItem = (item: AcItem) => {
-    if (item.type === 'keyword') {
-      toggleKeyword(item.kw)
-      setSearchQuery('')
-    } else if (item.type === 'identity') {
-      router.push(`/sinners/${sinner.id}/identities/${item.data.id}`)
-    } else {
-      router.push(`/sinners/${sinner.id}/ego/${item.data.id}`)
-    }
-    setShowAutocomplete(false)
-    setAcIndex(-1)
-  }
-
-  // 키보드 핸들러
-  const handleSearchKeyDown = useAutocompleteKeys({
-    open: showAutocomplete, count: acItems.length, index: acIndex, setOpen: setShowAutocomplete, setIndex: setAcIndex,
-    onPick: e => {
-      e.currentTarget.blur()
-      executeAcItem(acItems[acIndex])
-      setTimeout(() => (e.target as HTMLInputElement).focus(), 0)
-    },
+  const { identityHits, egoHits, groups } = useSinnerSearch({
+    identities, egos, tab, query: searchQuery, setQuery: setSearchQuery,
+    openIdentity: identity => router.push(`/sinners/${sinner.id}/identities/${identity.id}`),
+    openEgo: ego => router.push(`/sinners/${sinner.id}/ego/${ego.id}`),
+    keywordStats, egoKeywordStats, keywordIcons: kwIconMap,
   })
 
-  // 외부 클릭 시 드롭다운 닫기
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (autocompleteRef.current && !autocompleteRef.current.contains(e.target as Node)) {
-        setShowAutocomplete(false)
-        setAcIndex(-1)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+  const hasActiveFilters = searchQuery || rarityFilter || ownershipFilter !== 'all'
+
+  const filteredIdentities = useMemo(
+    () => filterSinnerIdentities(identities, { rarityFilter, hits: identityHits, sortPicked: sortPick !== null, sortOrder, ownershipFilter, ownedIds }),
+    [identities, rarityFilter, identityHits, sortPick, sortOrder, ownershipFilter, ownedIds],
+  )
+  const filteredEgos = useMemo(
+    () => filterSinnerEgos(egos, { hits: egoHits, sortPicked: sortPick !== null, sortOrder, ownershipFilter, ownedIds }),
+    [egos, egoHits, sortPick, sortOrder, ownershipFilter, ownedIds],
+  )
 
   return (
     <div className={`${styles.page} min-h-[100dvh] pb-16 relative`}>
@@ -243,160 +141,14 @@ export default function SinnerDetailClient({ sinner, identities, egos }: Props) 
             </div>
 
             {/* 검색 바 + 자동완성 (공통) */}
-            <div className={styles.searchWrap} ref={autocompleteRef}>
-              <div className="relative">
-                <Search
-                  size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2"
-                  style={{ color: 'var(--text-muted)' }}
-                  aria-hidden
-                />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => { setSearchQuery(e.target.value); setShowAutocomplete(true) }}
-                  placeholder={tab === 'identities' ? t('sinnerDetail.searchIdentity') : t('sinnerDetail.searchEgo')}
-                  aria-label={tab === 'identities' ? t('sinnerDetail.searchIdentity') : t('sinnerDetail.searchEgo')}
-                  className={styles.search}
-                  onFocus={() => { if (searchQuery.trim()) setShowAutocomplete(true) }}
-                  onKeyDown={handleSearchKeyDown}
-                />
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded hover:text-[var(--text-primary)]"
-                    style={{ color: 'var(--text-muted)' }}
-                    title={t('sinnerDetail.resetFilter')}
-                    aria-label={t('sinnerDetail.resetFilter')}
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-
-                {/* 자동완성 드롭다운 (화살표 키 + Tab 선택) */}
-                {showAutocomplete && hasAutocompleteResults && (() => {
-                  const kwStart = 0
-                  const identStart = autocompleteResults.keywords.length
-                  const egoStart = identStart + autocompleteResults.identities.length
-                  return (
-                    <div
-                      className="absolute z-50 left-0 right-0 mt-1 rounded overflow-hidden"
-                      style={{
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--border)',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-                        maxHeight: '17.5rem',
-                        overflowY: 'auto', scrollbarGutter: 'stable',
-                      }}
-                    >
-                      {/* 키워드 매칭 */}
-                      {autocompleteResults.keywords.length > 0 && (
-                        <div>
-                          <div className="px-3 py-1.5" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--text-muted)', fontSize: '0.625rem', fontWeight: 600 }}>
-                            {t('sinnerDetail.keyword')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('sinnerDetail.tabSelect')}</span>
-                          </div>
-                          {autocompleteResults.keywords.map(({ kw, count }, i) => {
-                            const idx = kwStart + i
-                            const isFocused = acIndex === idx
-                            const sinType = kwSinMap[kw] as SinType | undefined
-                            const chipColor = sinType ? SIN_COLORS[sinType] : '#888'
-                            const iconSlug = kwIconMap[kw]
-                            const isSelected = selectedKeywords.has(kw)
-                            return (
-                              <div
-                                key={kw}
-                                className="flex items-center gap-2 px-3 py-1.5 text-xs"
-                                style={{
-                                  background: isFocused ? 'rgba(200,144,10,0.12)' : 'transparent',
-                                  color: isFocused ? chipColor : isSelected ? chipColor : '#aaa',
-                                  borderLeft: isFocused ? '2px solid var(--gold)' : '2px solid transparent',
-                                }}
-                              >
-                                {iconSlug && (
-                                  <KeywordIcon
-                                    src={getKeywordIconUrl(kw, iconSlug)!}
-                                    alt="" width={14} height={14} unoptimized
-                                    style={{ width: '0.875rem', height: '0.875rem' }}
-                                  />
-                                )}
-                                <span>{kw}</span>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: 'auto' }}>{count}{t('sinnerDetail.count')}</span>
-                                {isSelected && <span style={{ color: chipColor, fontSize: '0.625rem' }}>ON</span>}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-
-                      {/* 인격 매칭 */}
-                      {autocompleteResults.identities.length > 0 && (
-                        <div>
-                          <div className="px-3 py-1.5" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--text-muted)', fontSize: '0.625rem', fontWeight: 600 }}>
-                            {t('sinnerDetail.identity')}
-                          </div>
-                          {autocompleteResults.identities.map((ident, i) => {
-                            const idx = identStart + i
-                            const isFocused = acIndex === idx
-                            return (
-                              <div
-                                key={ident.id}
-                                className="flex items-center gap-2 px-3 py-1.5 text-xs"
-                                style={{
-                                  background: isFocused ? 'rgba(200,144,10,0.12)' : 'transparent',
-                                  color: isFocused ? 'var(--gold-light)' : '#ccc',
-                                  borderLeft: isFocused ? '2px solid var(--gold)' : '2px solid transparent',
-                                }}
-                              >
-                                <span
-                                  className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                  style={{ background: ident.rarity === 3 ? 'var(--gold)' : ident.rarity === 2 ? '#5588bb' : '#556677' }}
-                                />
-                                <span>{getLocalizedName(ident, lang)}</span>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: 'auto' }}>{t('browser.rarityStar', { n: ident.rarity })}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-
-                      {/* EGO 매칭 */}
-                      {autocompleteResults.egos.length > 0 && (
-                        <div>
-                          <div className="px-3 py-1.5" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--text-muted)', fontSize: '0.625rem', fontWeight: 600 }}>
-                            EGO
-                          </div>
-                          {autocompleteResults.egos.map((ego, i) => {
-                            const idx = egoStart + i
-                            const isFocused = acIndex === idx
-                            const gradeColor = GRADE_COLORS[ego.grade] ?? '#667788'
-                            return (
-                              <div
-                                key={ego.id}
-                                className="flex items-center gap-2 px-3 py-1.5 text-xs"
-                                style={{
-                                  background: isFocused ? 'rgba(200,144,10,0.12)' : 'transparent',
-                                  color: isFocused ? 'var(--gold-light)' : '#ccc',
-                                  borderLeft: isFocused ? '2px solid var(--gold)' : '2px solid transparent',
-                                }}
-                              >
-                                <span
-                                  className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                  style={{ background: gradeColor }}
-                                />
-                                <span>{getLocalizedName(ego, lang)}</span>
-                                <span style={{ color: gradeColor, fontSize: '0.625rem', marginLeft: 'auto' }}>{ego.grade}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
+            <SearchBox
+              value={searchQuery}
+              onChange={setSearchQuery}
+              label={tab === 'identities' ? t('sinnerDetail.searchIdentity') : t('sinnerDetail.searchEgo')}
+              clearLabel={t('globalSearch.clear')}
+              groups={groups}
+              className={styles.searchWrap}
+            />
 
             {/* 인격 탭 */}
             <AnimatePresence mode="wait" initial={false}>
@@ -451,7 +203,7 @@ export default function SinnerDetailClient({ sinner, identities, egos }: Props) 
                     )}
 
                     {/* 정렬 토글 */}
-                    <button type="button" className={styles.control} onClick={() => setSortOrder(s => s === 'newest' ? 'oldest' : 'newest')}>
+                    <button type="button" className={styles.control} onClick={toggleSort}>
                       {sortOrder === 'newest' ? <ArrowDown size={14} aria-hidden /> : <ArrowUp size={14} aria-hidden />}
                       {sortOrder === 'newest' ? t('sinnerDetail.newest') : t('sinnerDetail.oldest')}
                     </button>
@@ -505,7 +257,7 @@ export default function SinnerDetailClient({ sinner, identities, egos }: Props) 
                 {/* 정렬 + 보유 필터 */}
                 <div className={styles.filters}>
                   <div className={styles.controls}>
-                  <button type="button" className={styles.control} onClick={() => setSortOrder(s => s === 'newest' ? 'oldest' : 'newest')}>
+                  <button type="button" className={styles.control} onClick={toggleSort}>
                     {sortOrder === 'newest' ? <ArrowDown size={14} aria-hidden /> : <ArrowUp size={14} aria-hidden />}
                     {sortOrder === 'newest' ? t('sinnerDetail.newest') : t('sinnerDetail.oldest')}
                   </button>

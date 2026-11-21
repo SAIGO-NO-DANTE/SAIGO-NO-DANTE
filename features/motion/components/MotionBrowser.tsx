@@ -4,14 +4,20 @@ import { useDeferredValue, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import { useLocale, useTranslations } from 'next-intl'
-import { Hourglass, RotateCw, Search, X } from 'lucide-react'
+import { Hourglass, RotateCw } from 'lucide-react'
 import IdentityFrameCard from '@/components/cards/IdentityFrameCard'
 import IntentLink from '@/components/ui/IntentLink'
+import SearchBox from '@/components/ui/SearchBox'
+import { nameGroup } from '@/components/ui/SearchRows'
 import EgoDisplayCard from '@/components/cards/EgoDisplayCard'
 import { useMotionCatalog } from '@/features/motion/hooks/useMotionCatalog'
-import { toMotionParam, type MotionEgo, type MotionIdentity, type MotionSinner } from '@/features/motion/lib/catalog'
+import { isMotionEgo, toMotionParam, type MotionEgo, type MotionIdentity } from '@/features/motion/lib/catalog'
+import { motionIndex, motionMatches, motionRows, type MotionTarget } from '@/features/motion/lib/motion-suggestions'
 import { QUERY_OPTIONS } from '@/lib/constants/query-options'
+import { useRouter } from '@/lib/i18n/navigation'
 import type { SupportedLang } from '@/lib/i18n/types'
+import { search as findHits, type Hit } from '@/lib/search/engine'
+import { sinnerName } from '@/lib/search/sinner-names'
 import { getSinnerLogoUrl } from '@/lib/utils/images'
 import { MotionBrowserSkeleton } from './SkillMotionSkeleton'
 
@@ -55,35 +61,41 @@ function Tab({ active, label, count, onClick }: { active: boolean; label: string
   )
 }
 
-function matchesOf(sinners: readonly MotionSinner[], needle: string) {
-  const hit = <T extends { title: string }>(skills: readonly T[]) => skills.find(skill => skill.title.toLowerCase().includes(needle))
-  return sinners.flatMap(s => [
-    ...s.identities.flatMap(identity => {
-      if (identity.label.toLowerCase().includes(needle)) return [{ key: identity.slug, cell: <IdentityCell key={identity.slug} sinnerId={s.id} identity={identity} /> }]
-      const skill = hit(identity.skills)
-      return skill ? [{ key: identity.slug, cell: <IdentityCell key={identity.slug} sinnerId={s.id} identity={identity} skill={skill} /> }] : []
-    }),
-    ...s.egos.flatMap(ego => {
-      if (ego.label.toLowerCase().includes(needle)) return [{ key: `ego${ego.egoId}`, cell: <EgoCell key={ego.egoId} sinnerId={s.id} ego={ego} /> }]
-      const skill = hit(ego.skills)
-      return skill ? [{ key: `ego${ego.egoId}`, cell: <EgoCell key={ego.egoId} sinnerId={s.id} ego={ego} skill={skill} /> }] : []
-    }),
-  ])
+/** Where a card leads: the skill it shows, else the owner's first (a motion-less new identity leads to its slug). */
+function cardHref({ owner, skill }: MotionTarget) {
+  const first = skill ?? owner.skills[0]
+  return motionWatchHref(first ? toMotionParam(first.key) : (owner as MotionIdentity).slug)
 }
+
+const matchCell = ({ sinnerId, owner, skill }: MotionTarget) => isMotionEgo(owner)
+  ? <EgoCell key={`e${owner.egoId}`} sinnerId={sinnerId} ego={owner} skill={skill} />
+  : <IdentityCell key={owner.slug} sinnerId={sinnerId} identity={owner} skill={skill} />
 
 /** The picking page: the twelve sinners, identities or E.G.O as the site's cards, and a search over all of them. A card opens the watching page. */
 export default function MotionBrowser() {
   const t = useTranslations('motionPage')
   const tSinner = useTranslations('sinner')
+  const lang = useLocale() as SupportedLang
+  const router = useRouter()
   const { sinners, error, retry } = useMotionCatalog()
   const [query, setQuery] = useQueryStates(QUERY, QUERY_OPTIONS)
   const [search, setSearch] = useState('')
-  const needle = useDeferredValue(search.trim().toLowerCase())
+  const needle = useDeferredValue(search.trim())
   const sinner = sinners?.find(s => s.id === query.sinner) ?? sinners?.[0]
   // A sinner's cards, once shown, stay (hidden) while another is: going back shows them at once, their art already drawn.
   const [seen, setSeen] = useState<readonly string[]>([])
   if (sinner && !seen.includes(sinner.id)) setSeen([...seen, sinner.id])
-  const matches = useMemo(() => (needle && sinners ? matchesOf(sinners, needle) : null), [needle, sinners])
+  // The search covers every sinner: the best match first, a skill's card shows the skill.
+  const searching = needle !== ''
+  const index = useMemo(() => (searching && sinners ? motionIndex(sinners, id => sinnerName(id, lang)) : null), [searching, sinners, lang])
+  const hits = useMemo(() => (index ? findHits(index.entries, needle) : null), [index, needle])
+  const matches = useMemo(() => (index && hits ? motionMatches(index, hits).map(matchCell) : null), [index, hits])
+  const suggestions = useMemo(() => {
+    if (!index || !hits) return []
+    const open = (hit: Hit) => router.push(cardHref(index.targets.get(hit.entry.href)!))
+    const rows = motionRows(hits)
+    return [nameGroup(t('identities'), rows.identities, open), nameGroup(t('egos'), rows.egos, open), nameGroup(t('skills'), rows.skills, open)].filter(group => group.rows.length > 0)
+  }, [index, hits, router, t])
 
   if (error && !sinners) {
     return (
@@ -116,16 +128,11 @@ export default function MotionBrowser() {
           <Tab active={query.tab === 'identity'} label={t('identities')} count={sinner.identities.length} onClick={() => void setQuery({ tab: 'identity' })} />
           <Tab active={query.tab === 'ego'} label={t('egos')} count={sinner.egos.length} onClick={() => void setQuery({ tab: 'ego' })} />
         </div>
-        <label className="relative mb-2 block w-full sm:w-72">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-secondary)]" aria-hidden="true" />
-          <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t('search')} aria-label={t('search')}
-            className="h-10 w-full rounded-md border border-[var(--border-control)] bg-[var(--bg-panel)] pl-9 pr-9 text-[0.875rem] text-[var(--text-primary)] transition-colors focus:border-[var(--gold)] focus:outline-none" />
-          {search && <button type="button" onClick={() => setSearch('')} aria-label={t('clearSearch')} className="absolute right-1 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)]"><X className="h-4 w-4" aria-hidden="true" /></button>}
-        </label>
+        <SearchBox value={search} onChange={setSearch} label={t('search')} clearLabel={t('clearSearch')} groups={suggestions} className="mb-2 w-full sm:w-72" />
       </div>
 
       {matches ? (
-        matches.length ? <ul className={grid} aria-label={t('search')}>{matches.map(match => match.cell)}</ul>
+        matches.length ? <ul className={grid} aria-label={t('search')}>{matches}</ul>
           : <p className="py-16 text-center text-[0.9375rem] text-[var(--text-secondary)]">{t('noResults')}</p>
       ) : sinners.filter(s => seen.includes(s.id)).map(s => (
         <div key={s.id} hidden={s.id !== sinner.id}>

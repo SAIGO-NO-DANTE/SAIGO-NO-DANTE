@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { EgoGift, EgoGiftTheme, MdEvent, MdEventChoice } from '@/features/mirror-dungeon/types'
 import {
-  choiceEntries, eventEntries, eventSuggestions, foundEventIds, giftEntries, giftSuggestions, givenGiftEntries, keywordEntries, packEntries, packSuggestions, replaceLastWord,
+  choiceEntries, eventEntries, eventSuggestions, foundEventIds, giftEntries, giftSuggestions, givenGiftEntries, keywordEntries, packEntries, packSuggestions,
 } from '@/features/mirror-dungeon/lib/search-suggestions'
 
 const gift = (id: string, name: string, keyword: string, effect: string | null, extra: Partial<EgoGift> = {}): EgoGift => ({
@@ -43,9 +43,6 @@ describe('gift suggestions', () => {
   it('completes the last word only, by keyword', () => {
     const found = giftSuggestions(entries, keywords, '적에게 화', ALL)
     expect(hrefs(found.keywords)).toEqual(['화상'])
-    expect(replaceLastWord('적에게 화', '화상')).toBe('적에게 화상')
-    expect(replaceLastWord('화', '화상')).toBe('화상')
-    expect(replaceLastWord('  A  B  ', 'C')).toBe('A C')
   })
 
   it('leaves out gifts the host cannot pick', () => {

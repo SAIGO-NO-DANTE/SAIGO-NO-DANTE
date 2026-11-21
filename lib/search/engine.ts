@@ -293,8 +293,8 @@ export function search(entries: IndexEntry[], query: string): Hit[] {
     else unmatched.push(entry)
   }
 
-  // typos only top up a short list, and always sit below it
-  if (max > 0 && solid < 3) {
+  // typos only top up a short list, and always sit below it; a name that is exactly the query was not mistyped
+  if (max > 0 && solid < 3 && !hits.some(hit => hit.kind === 'exact')) {
     for (const entry of unmatched) {
       const t = typo(entry, whole, qj, max)
       if (t) hits.push({ entry, score: 110 - 10 * t.cost + TYPE_BIAS[entry.type], reasons: [t.reason], similarity: 0.45 - 0.075 * t.cost, kind: 'typo' })

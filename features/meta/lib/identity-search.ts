@@ -1,14 +1,8 @@
 import { search, type IndexEntry } from '@/lib/search/engine'
-import { SINNER_ALIASES } from '@/lib/search/sinner-aliases'
-import { translations } from '@/lib/i18n/translations'
+import { sinnerTexts } from '@/lib/search/sinner-names'
 import type { IdentityStat } from '@/lib/meta/types'
 
 type KeywordNames = Record<string, { nameEn?: string | null; nameJp?: string | null } | undefined>
-
-function sinnerTexts(sinnerId: string): string[] {
-  const names = (translations as Record<string, { ko?: string; en?: string; ja?: string } | undefined>)[`sinner.${sinnerId}`]
-  return [names?.ko, names?.en, names?.ja, ...(SINNER_ALIASES[sinnerId] ?? [])].filter((text): text is string => !!text)
-}
 
 /**
  * The analysis identities that match `query`, best first, by the site search engine: names in all three languages,

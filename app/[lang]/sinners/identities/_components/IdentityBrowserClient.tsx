@@ -3,8 +3,9 @@
 // Design Ref: §5.1 — 인격 전체 브라우저 클라이언트
 import { useEffect, useMemo, useRef, useState } from 'react'
 import IntentLink from '@/components/ui/IntentLink'
-import { Search } from 'lucide-react'
+import SearchBox from '@/components/ui/SearchBox'
 import { useLocale, useTranslations } from 'next-intl'
+import { useRouter } from '@/lib/i18n/navigation'
 import { getLocalizedName } from '@/lib/i18n/localize'
 import type { SupportedLang } from '@/lib/i18n/types'
 import { useReducedMotion } from 'motion/react'
@@ -13,6 +14,7 @@ import type { Sinner } from '@/lib/types'
 import type { IdentityBrowserItem, SortOption } from '@/lib/types/browser'
 import type { DropdownOption } from '@/components/ui/Dropdown'
 import { useIdentityBrowserFilters } from '@/features/catalog/hooks/useBrowserFilters'
+import { useCatalogSearch } from '@/features/catalog/hooks/useCatalogSearch'
 import FilterSidebar from '@/features/catalog/components/FilterSidebar'
 import SinnerFilter from '@/features/catalog/components/SinnerFilter'
 import RarityFilter from '@/features/catalog/components/RarityFilter'
@@ -43,6 +45,8 @@ type IdentityBrowserItemWithRepresentativeKeywords = IdentityBrowserItem & {
 export default function IdentityBrowserClient({ identities, sinners }: Props) {
   const t = useTranslations('browser')
   const lang = useLocale() as SupportedLang
+  const tGlobal = useTranslations('globalSearch')
+  const router = useRouter()
   const sortOptions: DropdownOption<SortOption>[] = [
     { value: 'default', label: t('sort.default') },
     { value: 'name', label: t('sort.name') },
@@ -66,17 +70,11 @@ export default function IdentityBrowserClient({ identities, sinners }: Props) {
     toggle, resetAll,
   } = useIdentityBrowserFilters(representativeKeywordIdentities)
 
-  // 이름 검색 적용
-  const filtered = useMemo(() => {
-    const q = nameQuery.trim().toLowerCase()
-    if (!q) return filterResult
-    return filterResult.filter(id =>
-      (id.name_kr || '').toLowerCase().includes(q) ||
-      (id.name || '').toLowerCase().includes(q) ||
-      (id.name_en || '').toLowerCase().includes(q) ||
-      (id.name_jp || '').toLowerCase().includes(q)
-    )
-  }, [filterResult, nameQuery])
+  // 이름 검색: the best match first until the person picks a sort
+  const { list: filtered, groups } = useCatalogSearch(
+    'identity', representativeKeywordIdentities, filterResult, nameQuery, sort !== 'default',
+    id => router.push(`/sinners/${id.sinner_slug}/identities/${id.id}`),
+  )
 
   const filteredCount = nameQuery.trim() ? filtered.length : filterCount
 
@@ -124,29 +122,22 @@ export default function IdentityBrowserClient({ identities, sinners }: Props) {
       <div className="flex gap-6">
         {/* 사이드바 */}
         <m.div
-          className="shrink-0"
+          className="relative z-20 shrink-0"
           initial={shouldReduceMotion ? false : 'initial'}
           animate="animate"
           variants={shouldReduceMotion ? undefined : workbenchReveal}
         >
-          <FilterSidebar activeCount={activeCount}>
-            {/* 이름 검색 */}
-            <div>
-              <div className={filterStyles.label}>
-                {t('nameSearch')}
+          <FilterSidebar
+            activeCount={activeCount}
+            search={(
+              <div>
+                <div className={filterStyles.label}>
+                  {t('nameSearch')}
+                </div>
+                <SearchBox value={nameQuery} onChange={setNameQuery} label={t('identityPlaceholder')} clearLabel={tGlobal('clear')} groups={groups} />
               </div>
-              <div className="relative">
-                <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} aria-hidden />
-                <input
-                  type="text"
-                  value={nameQuery}
-                  onChange={e => setNameQuery(e.target.value)}
-                  placeholder={t('identityPlaceholder')}
-                  className={filterStyles.input}
-                  aria-label={t('identitySearchLabel')}
-                />
-              </div>
-            </div>
+            )}
+          >
             <div style={{ borderTop: '1px solid #2e2417' }} />
             <SinnerFilter
               sinners={sinners}

@@ -7,7 +7,8 @@ import type { IndexEntry } from '@/lib/search/engine'
 import { translations } from '@/lib/i18n/translations'
 import type { SupportedLang } from '@/lib/i18n/types'
 import { KEYWORD_COLORS, type EgoGift } from '@/features/mirror-dungeon/types'
-import { giftSuggestions, keywordEntries, replaceLastWord } from '@/features/mirror-dungeon/lib/search-suggestions'
+import { giftSuggestions, keywordEntries } from '@/features/mirror-dungeon/lib/search-suggestions'
+import { replaceLastWord } from '@/lib/search/query'
 
 /** The gift search field: gifts by name, keywords the last word may mean and effects holding the query. */
 export default function GiftSearchBox({ gifts, entries, keywordOrder, keywordLabels, getGiftKeywordIcon, usable, onPick, value, onChange, label, clearLabel, className }: {

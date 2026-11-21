@@ -29,20 +29,6 @@
 .tabCount { font-family: var(--font-title); font-size: 0.9375rem; color: var(--text-muted); }
 
 .searchWrap { margin-bottom: 0.75rem; }
-.search {
-  width: 100%;
-  min-height: 2.75rem;
-  padding: 0 2.5rem 0 2.25rem;
-  background: var(--bg-panel);
-  border: 1px solid #2e2417;
-  border-radius: 0.25rem;
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  outline: none;
-  transition: border-color 0.15s ease;
-}
-.search::placeholder { color: var(--text-muted); }
-.search:focus { border-color: rgba(200, 144, 10, 0.55); }
 
 /* 필터 줄 — 모든 컨트롤 같은 높이 */
 .filters {
@@ -101,7 +87,7 @@
   .filters .controls { margin-left: 0; }
 }
 @media (max-width: 380px) { .identityGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (prefers-reduced-motion: reduce) { .tabs button, .segment button, .segment img, .search { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .tabs button, .segment button, .segment img { transition: none; } }
 
 .egoGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); justify-items: center; gap: 1.75rem 1rem; }
 .egoGrid > * { width: 100%; max-width: 9.5rem; }

@@ -8,10 +8,12 @@ import Sheet from '@/components/ui/Sheet'
 
 type Props = {
   children: React.ReactNode
+  /** The search box, kept out of the scrolling list so its suggestion panel can reach over the grid */
+  search: React.ReactNode
   activeCount: number
 }
 
-export default function FilterSidebar({ children, activeCount }: Props) {
+export default function FilterSidebar({ children, search, activeCount }: Props) {
   const t = useTranslations('browser')
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -19,7 +21,7 @@ export default function FilterSidebar({ children, activeCount }: Props) {
     <>
       {/* 데스크탑 사이드바 */}
       <aside
-        className="sticky-under-nav hidden lg:block shrink-0 self-start overflow-y-auto"
+        className="sticky-under-nav hidden lg:flex shrink-0 flex-col self-start"
         style={{
           width: '16rem',
           top: 'calc(var(--nav-height) + 1rem)',
@@ -27,8 +29,11 @@ export default function FilterSidebar({ children, activeCount }: Props) {
           paddingRight: '0.75rem',
         }}
       >
-        <div className="flex flex-col gap-4 pb-6">
-          {children}
+        <div className="shrink-0 pb-4">{search}</div>
+        <div className="min-h-0 overflow-y-auto">
+          <div className="flex flex-col gap-4 pb-6">
+            {children}
+          </div>
         </div>
       </aside>
 
@@ -53,6 +58,7 @@ export default function FilterSidebar({ children, activeCount }: Props) {
 
       <Sheet open={mobileOpen} onClose={() => setMobileOpen(false)} title={t('filter')} closeLabel={t('closeFilter')}>
         <div className="flex flex-col gap-4 px-5 py-4">
+          {search}
           {children}
         </div>
       </Sheet>

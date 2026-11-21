@@ -81,12 +81,13 @@ export default function SearchBox({ value, onChange, label, clearLabel, groups, 
   const shown = open && count > 0
   const at = active < count ? active : -1
 
-  // The panel is wider than a narrow field: keep it inside the window instead of running off the right edge.
+  // The panel is wider than a narrow field: when it would run off the right edge it hangs from the field's right end
+  // instead (as far as the left edge allows).
   useLayoutEffect(() => {
-    const el = panel.current
-    if (!el) return
-    const over = el.getBoundingClientRect().right - (document.documentElement.clientWidth - 8)
-    el.style.transform = over > 0 ? `translateX(${-over}px)` : ''
+    const el = panel.current, field = el?.parentElement?.getBoundingClientRect()
+    if (!el || !field) return
+    const over = field.left + el.offsetWidth - (document.documentElement.clientWidth - 8)
+    el.style.transform = over > 0 ? `translateX(${-Math.max(over, Math.min(el.offsetWidth - field.width, field.left - 8))}px)` : ''
   }, [shown])
   // Only a key move scrolls the row into view; the pointer resting on a half-visible row must not.
   useEffect(() => {

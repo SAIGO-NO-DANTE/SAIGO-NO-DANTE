@@ -1,7 +1,6 @@
 import type { EGO, Identity } from '@/lib/data/sinners'
-import { getLocalizedAffiliations } from '@/lib/i18n/localize'
-import type { SupportedLang } from '@/lib/i18n/types'
-import { getRepresentativeKeywords } from './representative-keywords'
+import type { Hit } from '@/lib/search/engine'
+import { keepFound } from '@/lib/search/query'
 
 export type OwnershipFilter = 'all' | 'owned' | 'unowned'
 
@@ -45,72 +44,42 @@ export function countKeywords(lists: Iterable<readonly string[] | null | undefin
 }
 
 interface SinnerFilter {
-  searchQuery: string
-  selectedKeywords: ReadonlySet<string>
+  /** What the search found, best first; null when nothing is searched */
+  hits: readonly Hit[] | null
+  /** The person picked newest or oldest: the list keeps that order instead of the search's */
+  sortPicked: boolean
   sortOrder: 'newest' | 'oldest'
   ownershipFilter: OwnershipFilter
   ownedIds: ReadonlySet<string> | null
 }
 
-/** 인격 필터링: 등급 → 검색어 → 키워드 → 보유, then by game id. */
-export function filterSinnerIdentities(identities: Identity[], f: SinnerFilter & { rarityFilter: string | null; lang: SupportedLang }) {
-  const { rarityFilter, searchQuery, selectedKeywords, sortOrder, ownershipFilter, ownedIds, lang } = f
+/** 인격 필터링: 등급 → 보유, then by game id; with a search only the identities it found, in its order unless a sort is picked. */
+export function filterSinnerIdentities(identities: Identity[], f: SinnerFilter & { rarityFilter: string | null }) {
+  const { rarityFilter, hits, sortPicked, sortOrder, ownershipFilter, ownedIds } = f
   let result = identities
   if (rarityFilter) result = result.filter(i => `${i.rarity}성` === rarityFilter)
-  if (searchQuery.trim()) {
-    const q = searchQuery.trim().toLowerCase()
-    result = result.filter(i => {
-      const rawAffiliations = [
-        i.affiliation,
-        ...(i.association_list ?? []),
-      ].filter((affiliation): affiliation is string => Boolean(affiliation))
-      const affiliationTerms = [
-        ...rawAffiliations,
-        ...getLocalizedAffiliations(rawAffiliations, lang),
-      ]
-
-      return i.name_kr.toLowerCase().includes(q) ||
-        affiliationTerms.some(affiliation => affiliation.toLowerCase().includes(q)) ||
-        getRepresentativeKeywords(i).some(kw => kw.toLowerCase().startsWith(q))
-    })
-  }
-  if (selectedKeywords.size > 0) {
-    result = result.filter(i =>
-      [...selectedKeywords].every(kw => getRepresentativeKeywords(i).includes(kw))
-    )
-  }
   if (ownershipFilter !== 'all' && ownedIds) {
     result = result.filter(i =>
       ownershipFilter === 'owned' ? ownedIds.has(i.id) : !ownedIds.has(i.id)
     )
   }
-  return [...result].sort((a, b) => {
+  const sorted = [...result].sort((a, b) => {
     const aId = parseInt(a.game_id ?? '0')
     const bId = parseInt(b.game_id ?? '0')
     return sortOrder === 'newest' ? bId - aId : aId - bId
   })
+  return hits ? keepFound(sorted, hits, i => i.id, sortPicked) : sorted
 }
 
-/** EGO 필터링: 검색어 → 키워드 → 보유, then by release date. */
+/** EGO 필터링: 보유, then by release date; with a search as filterSinnerIdentities does. */
 export function filterSinnerEgos(egos: EGO[], f: SinnerFilter) {
-  const { searchQuery, selectedKeywords, sortOrder, ownershipFilter, ownedIds } = f
+  const { hits, sortPicked, sortOrder, ownershipFilter, ownedIds } = f
   let result = egos
-  if (searchQuery.trim()) {
-    const q = searchQuery.trim().toLowerCase()
-    result = result.filter(e =>
-      (e.name_kr && e.name_kr.toLowerCase().includes(q)) ||
-      (e.keywords && e.keywords.some(kw => kw.toLowerCase().startsWith(q)))
-    )
-  }
-  if (selectedKeywords.size > 0) {
-    result = result.filter(e =>
-      e.keywords && [...selectedKeywords].every(kw => e.keywords!.includes(kw))
-    )
-  }
   if (ownershipFilter !== 'all' && ownedIds) {
     result = result.filter(e =>
       ownershipFilter === 'owned' ? ownedIds.has(e.id) : !ownedIds.has(e.id)
     )
   }
-  return [...result].sort((a, b) => compareEgosByReleaseDate(a, b, sortOrder))
+  const sorted = [...result].sort((a, b) => compareEgosByReleaseDate(a, b, sortOrder))
+  return hits ? keepFound(sorted, hits, e => e.id, sortPicked) : sorted
 }
