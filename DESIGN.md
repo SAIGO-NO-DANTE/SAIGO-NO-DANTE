@@ -124,7 +124,7 @@
 | 덱·플랜 카드의 주요 키워드(아이콘 + 이름, 상자 없이, 설명 아래), 플랜 난이도 | `components/cards/CardKeywords.tsx`, `components/cards/PlanDifficulty.tsx` |
 | 게시판 필터 칸(구역 제목, 글자 선택 버튼, 아이콘 타일, 고른 항목 줄, 입력 칸) | `components/board/FilterControls.tsx` |
 | 인격·E.G.O 고르는 창의 왼쪽 필터(이름 검색, 등급, 수감자) | `components/ui/CharacterPickerFilters.tsx` |
-| 검색 칸과 입력 칸 아래에 뜨는 자동 완성(종류별 묶음, 맞은 글자 금색, ↓↑ Enter Esc, 한글 조합 중에는 키를 가로채지 않음), 줄 모양 | `components/ui/SearchBox.tsx`(`SuggestRow`, `SuggestCut`) |
+| 검색 칸과 입력 칸 아래에 뜨는 자동 완성(종류별 묶음, 맞은 글자 금색, ↓↑ Enter Esc, 한글 조합 중에는 키를 가로채지 않음), 줄 모양 | `components/ui/SearchBox.tsx`(`SuggestRow`, `SuggestCut`), 엔진 결과를 줄 묶음으로: `components/ui/SearchRows.tsx` |
 | 층 제약 | `features/planner/components/FloorConstraints.tsx` |
 | 스킬 이름 배너 | `features/catalog/components/SkillNameBanner.tsx` |
 | 페이지 머리말, 뒤로 가기 | `components/ui/PageHeader.tsx`, `components/navigation/BackLink.tsx` |

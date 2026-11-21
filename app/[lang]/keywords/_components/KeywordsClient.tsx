@@ -2,10 +2,12 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useQueryState, parseAsString } from 'nuqs'
-import { Search, X, LayoutList, Grid3X3 } from 'lucide-react'
+import { LayoutList, Grid3X3 } from 'lucide-react'
 import { useLocale } from 'next-intl'
 import Dropdown, { type DropdownOption } from '@/components/ui/Dropdown'
 import PageHeader from '@/components/ui/PageHeader'
+import SearchBox from '@/components/ui/SearchBox'
+import { cutGroup, nameGroup } from '@/components/ui/SearchRows'
 import GiftDetailModal from '@/features/mirror-dungeon/components/GiftDetailModal'
 import { GiftKeywordTab } from '@/features/mirror-dungeon/components/GiftCatalog'
 import type { SupportedLang } from '@/lib/i18n/types'
@@ -13,6 +15,9 @@ import { getLocalizedName } from '@/lib/i18n/localize'
 import KeywordGrid from './KeywordGrid'
 import KeywordModal, { type KeywordEgo, type KeywordGift, type KeywordIdentity } from './KeywordModal'
 import { keywordDesc, keywordName, kt, type KeywordEntry } from './KeywordCard'
+import { keywordEntries, keywordRows } from './keyword-search'
+import { search as findHits, type Hit } from '@/lib/search/engine'
+import { keepFound } from '@/lib/search/query'
 import { gameTextToPlain, refNameLabels } from '@/lib/game-text/rich-text'
 import { createGiftMentionMatcher } from '@/lib/keywords/gift-mentions'
 import { resolveKeywordIconUrl } from '@/lib/keywords/catalog'
@@ -135,17 +140,28 @@ export default function KeywordsClient({
   }, [keywords])
 
   /* ── 필터링 + 정렬 ── */
-  const filtered = useMemo(() => {
-    const query = search.toLowerCase()
+  const listed = useMemo(() => {
     const usage = (name: string) => (identityCountMap[name] || 0) + (egoCountMap[name] || 0) + (giftCountMap[name] || 0)
-    return keywords.filter(kw => {
-      if (selectedCategories.size > 0 && !selectedCategories.has((kw.category || '기타') as KeywordCategory)) return false
-      if (query && !keywordName(kw, lang).toLowerCase().includes(query) && !gameTextToPlain(keywordDesc(kw, lang), { names: refLabels, locale: lang }).toLowerCase().includes(query)) return false
-      return true
-    }).sort((a, b) => sort === 'name'
-      ? keywordName(a, lang).localeCompare(keywordName(b, lang), lang)
-      : usage(b.name) - usage(a.name))
-  }, [keywords, selectedCategories, search, sort, identityCountMap, egoCountMap, giftCountMap, lang, refLabels])
+    return keywords.filter(kw => selectedCategories.size === 0 || selectedCategories.has((kw.category || '기타') as KeywordCategory))
+      .sort((a, b) => sort === 'name'
+        ? keywordName(a, lang).localeCompare(keywordName(b, lang), lang)
+        : usage(b.name) - usage(a.name))
+  }, [keywords, selectedCategories, sort, identityCountMap, egoCountMap, giftCountMap, lang])
+
+  // The search: names and plain descriptions. The best match comes first until the person picks a sort (the default one is by use).
+  const searching = search.trim() !== ''
+  const index = useMemo(() => searching
+    ? keywordEntries(keywords, kw => keywordName(kw, lang), kw => gameTextToPlain(keywordDesc(kw, lang), { names: refLabels, locale: lang }), kw => resolveKeywordIconUrl(kw.name, kw.icon_slug))
+    : null, [searching, keywords, lang, refLabels])
+  const hits = useMemo(() => index ? findHits(index, search) : null, [index, search])
+  const filtered = useMemo(() => hits ? keepFound(listed, hits, kw => kw.name, sort !== 'default') : listed, [listed, hits, sort])
+  const suggestions = useMemo(() => {
+    if (!hits) return []
+    const byName = new Map(keywords.map(kw => [kw.name, kw]))
+    const open = (hit: Hit) => setSelected(byName.get(hit.entry.href)!)
+    const found = keywordRows(hits)
+    return [nameGroup(kt('nav.db.keywords', lang), found.names, open), cutGroup(kt('keyword.search.description', lang), found.texts, open)].filter(group => group.rows.length > 0)
+  }, [hits, keywords, lang, setSelected])
 
   /* ── 선택된 키워드의 관련 데이터 ── */
   const related = useMemo(() => {
@@ -178,27 +194,14 @@ export default function KeywordsClient({
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-x-3">
-          <div className="relative min-w-0 basis-full sm:basis-auto sm:w-[16rem]">
-            <Search size={14} aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9c8b73]" />
-            <input
-              type="search"
-              value={search}
-              onChange={e => setSearch(e.target.value || null)}
-              placeholder={t('keyword.search.placeholder')}
-              aria-label={t('keyword.search.aria')}
-              className="h-9 w-full min-w-0 rounded border border-[#2e2417] bg-[#17120c] pl-8 pr-8 text-[0.8125rem] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus-visible:border-[var(--gold)] [&::-webkit-search-cancel-button]:hidden"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch(null)}
-                aria-label={t('keyword.search.clearAria')}
-                className={`absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center text-[#9c8b73] hover:text-[var(--text-primary)] ${FOCUS_RING}`}
-              >
-                <X size={12} aria-hidden />
-              </button>
-            )}
-          </div>
+          <SearchBox
+            value={search}
+            onChange={value => setSearch(value || null)}
+            label={t('keyword.search.placeholder')}
+            clearLabel={t('keyword.search.clearAria')}
+            groups={suggestions}
+            className="min-w-0 basis-full sm:basis-auto sm:w-[16rem]"
+          />
 
           <p aria-live="polite" className="mr-auto text-[0.8125rem] tabular-nums text-[#9c8b73] sm:ml-auto sm:mr-0">
             {filtered.length !== keywords.length

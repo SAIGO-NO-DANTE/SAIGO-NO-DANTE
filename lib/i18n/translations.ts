@@ -111,9 +111,7 @@ export const translations = {
   'sinnerDetail.noResults': { ko: '검색 결과가 없습니다.', en: 'No results found.', ja: '検索結果がありません。' },
   'sinnerDetail.noIdentities': { ko: '등록된 인격이 없습니다.', en: 'No identities registered.', ja: '登録された人格がありません。' },
   'sinnerDetail.noEgo': { ko: '등록된 EGO가 없습니다.', en: 'No EGO registered.', ja: '登録されたEGOがありません。' },
-  'sinnerDetail.resetFilter': { ko: '필터 초기화', en: 'Reset Filters', ja: 'フィルターリセット' },
   'sinnerDetail.keyword': { ko: '키워드', en: 'Keyword', ja: 'キーワード' },
-  'sinnerDetail.tabSelect': { ko: 'Tab으로 선택', en: 'Tab to select', ja: 'Tabで選択' },
   'sinnerDetail.identity': { ko: '인격', en: 'Identity', ja: '人格' },
   'sinnerDetail.count': { ko: '개', en: '', ja: '件' },
 
@@ -246,6 +244,7 @@ export const translations = {
   'keyword.search.placeholder': { ko: '이름 또는 설명...', en: 'Name or description...', ja: '名前または説明...' },
   'keyword.search.aria': { ko: '키워드 검색', en: 'Search keywords', ja: 'キーワード検索' },
   'keyword.search.clearAria': { ko: '검색 초기화', en: 'Clear search', ja: '検索クリア' },
+  'keyword.search.description': { ko: '설명', en: 'Description', ja: '説明' },
   'keyword.filter.categoryAria': { ko: '카테고리 필터', en: 'Category filter', ja: 'カテゴリフィルター' },
   'keyword.count.filtered': { ko: '{filtered}개 / 전체 {total}개', en: '{filtered} / {total} total', ja: '{filtered}個 / 全{total}個' },
   'keyword.count.total': { ko: '전체 {count}개', en: '{count} total', ja: '全{count}個' },

@@ -1,15 +1,17 @@
 'use client'
 
 // Design Ref: §5.1 — EGO 전체 브라우저 클라이언트
-import { useState, useMemo } from 'react'
-import { Search } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
+import SearchBox from '@/components/ui/SearchBox'
+import { useRouter } from '@/lib/i18n/navigation'
 import { useReducedMotion } from 'motion/react'
 import * as m from 'motion/react-m'
 import type { Sinner } from '@/lib/types'
 import type { EGOBrowserItem, SortOption } from '@/lib/types/browser'
 import type { DropdownOption } from '@/components/ui/Dropdown'
 import { useEGOBrowserFilters } from '@/features/catalog/hooks/useBrowserFilters'
+import { useCatalogSearch } from '@/features/catalog/hooks/useCatalogSearch'
 import FilterSidebar from '@/features/catalog/components/FilterSidebar'
 import SinnerFilter from '@/features/catalog/components/SinnerFilter'
 import { filterStyles } from '@/features/catalog/components/FilterToggleGroup'
@@ -33,6 +35,8 @@ type Props = {
 
 export default function EGOBrowserClient({ egos, sinners }: Props) {
   const t = useTranslations('browser')
+  const tGlobal = useTranslations('globalSearch')
+  const router = useRouter()
   const sortOptions: DropdownOption<SortOption>[] = [
     { value: 'default', label: t('sort.default') },
     { value: 'name', label: t('sort.name') },
@@ -48,16 +52,11 @@ export default function EGOBrowserClient({ egos, sinners }: Props) {
     toggle, resetAll,
   } = useEGOBrowserFilters(egos)
 
-  const filtered = useMemo(() => {
-    const q = nameQuery.trim().toLowerCase()
-    if (!q) return filterResult
-    return filterResult.filter(e =>
-      (e.name_kr || '').toLowerCase().includes(q) ||
-      (e.name || '').toLowerCase().includes(q) ||
-      (e.name_en || '').toLowerCase().includes(q) ||
-      (e.name_jp || '').toLowerCase().includes(q)
-    )
-  }, [filterResult, nameQuery])
+  // The best match first until the person picks a sort
+  const { list: filtered, groups } = useCatalogSearch(
+    'ego', egos, filterResult, nameQuery, sort !== 'default',
+    ego => router.push(`/sinners/${ego.sinner_slug}/ego/${ego.id}`),
+  )
 
   const filteredCount = nameQuery.trim() ? filtered.length : filterCount
   const { visible, sentinelRef } = useProgressiveRender(filtered.length, GRID_PAGE)
@@ -82,29 +81,22 @@ export default function EGOBrowserClient({ egos, sinners }: Props) {
       <div className="flex gap-6">
         {/* 사이드바 */}
         <m.div
-          className="shrink-0"
+          className="relative z-20 shrink-0"
           initial={shouldReduceMotion ? false : 'initial'}
           animate="animate"
           variants={shouldReduceMotion ? undefined : workbenchReveal}
         >
-          <FilterSidebar activeCount={activeCount}>
-            {/* 이름 검색 */}
-            <div>
-              <div className={filterStyles.label}>
-                {t('nameSearch')}
+          <FilterSidebar
+            activeCount={activeCount}
+            search={(
+              <div>
+                <div className={filterStyles.label}>
+                  {t('nameSearch')}
+                </div>
+                <SearchBox value={nameQuery} onChange={setNameQuery} label={t('egoPlaceholder')} clearLabel={tGlobal('clear')} groups={groups} />
               </div>
-              <div className="relative">
-                <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} aria-hidden />
-                <input
-                  type="text"
-                  value={nameQuery}
-                  onChange={e => setNameQuery(e.target.value)}
-                  placeholder={t('egoPlaceholder')}
-                  className={filterStyles.input}
-                  aria-label={t('egoSearchLabel')}
-                />
-              </div>
-            </div>
+            )}
+          >
             <div style={{ borderTop: '1px solid #2e2417' }} />
             <SinnerFilter
               sinners={sinners}

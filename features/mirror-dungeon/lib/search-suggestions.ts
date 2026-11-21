@@ -1,4 +1,5 @@
 import { search, type Hit, type IndexEntry } from '@/lib/search/engine'
+import { lastWord } from '@/lib/search/query'
 import { gameTextToPlain, mayBeRawGameText } from '@/lib/game-text/rich-text'
 import { localizeRowName } from '@/lib/i18n/localize'
 import type { SupportedLang } from '@/lib/i18n/types'
@@ -10,12 +11,6 @@ import type { EgoGift, EgoGiftTheme, MdEvent, MdEventChoice } from '@/features/m
 
 type Named = { name: string; name_en?: string | null; name_jp?: string | null }
 const names = (row: Named) => ({ ko: row.name, en: row.name_en, ja: row.name_jp })
-
-/** The last word of the query: what a keyword suggestion completes. */
-const lastWord = (query: string) => query.trim().split(/\s+/).pop() ?? ''
-
-/** The query with its last word replaced, as picking a keyword suggestion does. */
-export const replaceLastWord = (query: string, word: string) => [...query.trim().split(/\s+/).slice(0, -1), word].join(' ')
 
 // Found through its gifts' names only, not by its own: the row belongs under the gifts, not among the names.
 const viaContext = (hit: Hit) => hit.reasons.length > 0 && hit.reasons.every(reason => reason.field === 'keyword')

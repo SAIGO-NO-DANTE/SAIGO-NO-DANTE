@@ -148,6 +148,9 @@ describe('hangul typos', () => {
     expect(search([named('합성 재료 소모')], '료슈')).toEqual([])
     expect(search([named('강한 쐐기')], '쇄기')[0].kind).toBe('typo')
   })
+  it('adds no typo hits when a name is exactly the query', () => {
+    expect(search([named('화상'), named('박힌 화살')], '화상').map(h => h.entry.label)).toEqual(['화상'])
+  })
   it('does not end a typo match in the middle of a syllable', () => {
     expect(search([named('1호선')], '호수')).toEqual([])
     expect(search([named('진동 폭발')], '진둥')[0].kind).toBe('typo')
