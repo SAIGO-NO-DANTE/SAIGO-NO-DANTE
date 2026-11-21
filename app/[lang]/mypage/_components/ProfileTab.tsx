@@ -8,9 +8,12 @@ import AvatarPicker from "@/features/account/components/AvatarPicker";
 import { DEFAULT_AVATAR_URL } from "@/lib/constants/game";
 import { getCommunityCopy } from "@/features/community";
 import { LogOut, Pencil } from "lucide-react";
+import type { CommunityProfile } from "@/features/community";
+import ProfileSettings from "@/features/community/components/ProfileSettings";
 import Button from "@/components/ui/Button";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useAccountActions } from "@/app/[lang]/mypage/_components/useAccountActions";
+import styles from "@/styles/components/CommunityProfile.module.css";
 
 type Profile = {
   username: string | null;
@@ -20,11 +23,15 @@ type Profile = {
 export default function ProfileTab({
   profile,
   email,
+  settings,
   onProfileUpdate,
+  onSettingsSaved,
 }: {
   profile: Profile;
   email: string;
+  settings?: CommunityProfile["settings"];
   onProfileUpdate: () => Promise<void>;
+  onSettingsSaved: () => Promise<void>;
 }) {
   const locale = useLocale(),
     t = getCommunityCopy(locale);
@@ -85,59 +92,63 @@ export default function ProfileTab({
     }
   }
   return (
-    <section className="community-settings">
-      <div className="mb-5 flex items-center gap-4">
-        <Image
-          src={profile.avatar_url || DEFAULT_AVATAR_URL}
-          alt=""
-          width={56}
-          height={56}
-          className="h-14 w-14 rounded-full object-cover shadow-[0_0_0_2px_#0d0b08,0_0_0_3px_#5a4526]"
-        />
-        <button
-          type="button"
-          className="community-link"
-          onClick={() => setAvatarOpen(true)}
-          disabled={busy}
-        >
-          <Pencil size={15} />
-          {t.editAvatar}
-        </button>
-      </div>
-      <form onSubmit={save}>
-        <label>
-          {t.name}
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            minLength={1}
-            maxLength={20}
-            required
-            autoComplete="nickname"
+    <div className={styles.settings}>
+      <section aria-labelledby="settings-profile" className={styles.group}>
+        <h3 id="settings-profile" className={styles.groupTitle}>{t.profileSection}</h3>
+        <div className="mb-3 flex items-center gap-4">
+          <Image
+            src={profile.avatar_url || DEFAULT_AVATAR_URL}
+            alt=""
+            width={56}
+            height={56}
+            className="h-14 w-14 rounded-full border border-[var(--border)] object-cover"
           />
-        </label>
-        <label>
-          {t.bio}
-          <textarea
-            aria-label={t.bio}
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            maxLength={300}
-            rows={4}
-          />
-          <span className="community-muted text-right">{bio.length} / 300</span>
-        </label>
-        <Button type="submit" variant="primary" className="justify-self-end" loading={busy}>
-          {busy ? t.saving : t.save}
-        </Button>
-      </form>
-      <section className="community-account">
-        <h2>{t.account}</h2>
-        <div className="community-account-email">
+          <button
+            type="button"
+            className="community-link"
+            onClick={() => setAvatarOpen(true)}
+            disabled={busy}
+          >
+            <Pencil size={15} />
+            {t.editAvatar}
+          </button>
+        </div>
+        <form onSubmit={save} className={styles.form}>
+          <label>
+            {t.name}
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              minLength={1}
+              maxLength={20}
+              required
+              autoComplete="nickname"
+            />
+          </label>
+          <label>
+            {t.bio}
+            <textarea
+              aria-label={t.bio}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              maxLength={300}
+              rows={4}
+            />
+            <span className="community-muted text-right">{bio.length} / 300</span>
+          </label>
+          <Button type="submit" variant="primary" className="justify-self-end" loading={busy}>
+            {busy ? t.saving : t.save}
+          </Button>
+        </form>
+      </section>
+      {settings && <ProfileSettings initial={settings} onSaved={onSettingsSaved} />}
+      <section aria-labelledby="settings-account" className={styles.group}>
+        <h3 id="settings-account" className={styles.groupTitle}>{t.account}</h3>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 pb-2 text-[0.875rem] [overflow-wrap:anywhere]">
           <span className="community-muted">{t.accountEmail}</span>
           <span>{email}</span>
         </div>
-        <div className="community-account-actions">
+        <div className="flex flex-wrap gap-2">
           <Button icon={LogOut} onClick={logout}>
             {t.logout}
           </Button>
@@ -164,6 +175,6 @@ export default function ProfileTab({
         onReset={() => avatar(DEFAULT_AVATAR_URL)}
         onClose={() => setAvatarOpen(false)}
       />
-    </section>
+    </div>
   );
 }

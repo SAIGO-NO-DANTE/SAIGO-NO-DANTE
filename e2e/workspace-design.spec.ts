@@ -17,7 +17,7 @@ for(const width of [1440,390])test(`workspace controls and privacy ${width}`,asy
  await expect(page.getByRole('switch',{name:'팔로워 목록 공개',exact:true})).toHaveAttribute('aria-checked','false')
  await page.reload();await expect(toggle).toHaveAttribute('aria-checked','true')
  await page.screenshot({path:info.outputPath(`mypage-${width}.png`),fullPage:true})
- await page.getByRole('button',{name:'팔로워 0',exact:true}).click();await expect(page.getByRole('button',{name:'팔로워',exact:true})).toHaveAttribute('aria-pressed','true');await expect(page.getByRole('region',{name:'팔로우 목록'})).toBeVisible()
+ await page.getByRole('tab',{name:/도전과제/}).click();await page.getByRole('button',{name:'팔로워 0',exact:true}).click();await expect(page.getByRole('button',{name:'팔로워',exact:true})).toHaveAttribute('aria-pressed','true');await expect(page.getByRole('region',{name:'팔로우 목록'})).toBeVisible()
  await page.getByRole('button',{name:'팔로워',exact:true}).click();await expect(page.getByText('아직 목록에 관리자가 없습니다.',{exact:true})).toBeVisible()
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1)
  await page.route('**/api/inquiries',r=>r.fulfill({json:[]}))

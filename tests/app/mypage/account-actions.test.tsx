@@ -21,7 +21,7 @@ import { communityCopy } from '@/features/community/lib/copy'
 
 const ko = communityCopy.ko
 const profile = { username: 'QA', bio: null, avatar_url: null }
-const renderProfile = () => renderToStaticMarkup(<ProfileTab profile={profile} email="qa@example.invalid" onProfileUpdate={async () => {}} />)
+const renderProfile = () => renderToStaticMarkup(<ProfileTab profile={profile} email="qa@example.invalid" onProfileUpdate={async () => {}} onSettingsSaved={async () => {}} />)
 
 beforeEach(() => { search.params = new URLSearchParams() })
 

@@ -6,6 +6,7 @@ import { getCommunityCopy } from '@/features/community/lib/copy'
 import type { CommunitySettings } from '@/features/community/lib/rules'
 import { showError, showSuccess } from '@/lib/toast'
 import { usePushSubscription } from '@/hooks/usePushSubscription'
+import styles from '@/styles/components/CommunityProfile.module.css'
 
 type Key = keyof CommunitySettings
 const GROUPS: { title: 'visibilityGroup' | 'notifications'; rows: { key: Key; label: 'visibility' | 'publicFollowing' | 'publicFollowers' | 'notifyComments' | 'notifyFollows' | 'notifyPosts' }[] }[] = [
@@ -44,13 +45,13 @@ export default function ProfileSettings({ initial, onSaved }: { initial: Communi
     }
   }
   return (
-    <div className="grid gap-4">
+    <>
       {GROUPS.map(group => (
-        <section key={group.title} aria-labelledby={`${id}-${group.title}`} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-panel)]">
-          <h2 id={`${id}-${group.title}`} className="px-5 pb-2.5 pt-4 font-[family-name:var(--font-heading)] text-[0.9375rem] text-[var(--text-secondary)]">{t[group.title]}</h2>
+        <section key={group.title} aria-labelledby={`${id}-${group.title}`} className={styles.group}>
+          <h3 id={`${id}-${group.title}`} className={styles.groupTitle}>{t[group.title]}</h3>
           {group.title === 'notifications' && (
-            <label htmlFor={`${id}-push`} className="flex min-h-14 cursor-pointer items-center justify-between gap-4 border-t border-white/[0.05] px-5">
-              <span className="text-[0.9375rem] text-[var(--text-primary)]">{t.pushRow}</span>
+            <label htmlFor={`${id}-push`} className={`${styles.row} cursor-pointer`}>
+              <span>{t.pushRow}</span>
               {push.state === 'denied' || push.state === 'unsupported'
                 ? <span className="text-[var(--text-sm)] text-[var(--text-tertiary)]">{push.state === 'denied' ? t.pushBlocked : t.pushUnsupported}</span>
                 : <Switch id={`${id}-push`} checked={push.state === 'on'} disabled={push.state === 'loading' || push.state === 'busy'} onChange={on => void togglePush(on)} />}
@@ -60,14 +61,14 @@ export default function ProfileSettings({ initial, onSaved }: { initial: Communi
             const locked = (key === 'public_following' || key === 'public_followers') && !values.public_profile
             return (
               <label key={key} htmlFor={`${id}-${key}`}
-                className={`flex min-h-14 items-center justify-between gap-4 border-t border-white/[0.05] px-5 transition-opacity duration-200 ${locked ? 'cursor-not-allowed opacity-45' : 'cursor-pointer'}`}>
-                <span className="text-[0.9375rem] text-[var(--text-primary)]">{t[label]}</span>
+                className={`${styles.row} transition-opacity duration-200 ${locked ? 'cursor-not-allowed opacity-45' : 'cursor-pointer'}`}>
+                <span>{t[label]}</span>
                 <Switch id={`${id}-${key}`} checked={values[key]} disabled={locked || saving === key} onChange={value => void change(key, value)} />
               </label>
             )
           })}
         </section>
       ))}
-    </div>
+    </>
   )
 }

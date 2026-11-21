@@ -115,7 +115,6 @@
   background: var(--bg-card);
 }
 .community-rules h2,
-.community-settings h2,
 .community-recent h2 {
   font-family: var(--font-paperlogy);
   font-weight: 700;
@@ -142,91 +141,13 @@
   border-top: 1px solid var(--border);
   padding-top: 1rem;
 }
-.community-settings-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 23rem;
-  gap: 1.5rem;
-  align-items: start;
-}
-.community-settings {
-  border: 0;
-  padding: 1.75rem;
-  background: var(--bg-panel);
-  border-radius: .5rem;
-}
-.community-settings form {
-  display: grid;
-  gap: 1.25rem;
-}
-.community-settings label {
-  display: grid;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-}
-.community-settings input:not([type="checkbox"]),
-.community-settings textarea {
-  width: 100%;
-  padding: 0.8rem 1rem;
-  background: var(--bg-deep);
-  border: 0;
-  color: var(--text-primary);
-  border-radius: 0.25rem;
-  outline-offset: 2px;
-}
-.community-settings textarea {
-  resize: vertical;
-  min-height: 8rem;
-}
-.community-settings input:focus,
-.community-settings textarea:focus {
-  outline: 1px solid var(--gold);
-}
 .community-link:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
-.community-settings .community-visibility {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1.25rem 0;
-  border-top: 1px solid var(--border);
-}
-.community-visibility input {
-  margin-top: 0.25rem;
-  width: 1.125rem;
-  height: 1.125rem;
-  accent-color: var(--gold);
-  flex-shrink: 0;
-}
-.community-visibility small {
-  display: block;
-  margin-top: 0.5rem;
-  line-height: 1.6;
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-}
 .community-muted {
   font-size: 0.875rem;
   color: var(--text-tertiary);
-}
-.community-account {
-  border-top: 1px solid var(--border);
-  padding-top: 1.5rem;
-  margin-top: 1.5rem;
-}
-.community-account-email {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
-  overflow-wrap: anywhere;
-}
-.community-account-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
 }
 .community-page-heading {
   display: flex;
@@ -299,8 +220,7 @@
   .community-shell {
     padding: 5.5rem 1rem 3rem;
   }
-  .community-profile,
-  .community-settings-layout {
+  .community-profile {
     grid-template-columns: 1fr;
   }
   .community-identity {
@@ -336,7 +256,6 @@
   .community-deck-grid {
     grid-template-columns: 1fr;
   }
-  .community-settings,
   .community-rules {
     padding: 1.25rem;
   }

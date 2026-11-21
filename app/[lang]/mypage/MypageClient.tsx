@@ -10,7 +10,7 @@ import { useHtmlFlag } from "@/hooks/useHtmlFlag";
 import { claimGuestPosts, useGuestPosts } from "@/features/account/hooks/useGuestPosts";
 import { getGuestCopy } from "@/features/account";
 import MypageTabs, { RailSignOut, resolveMypageTab, type MypageTab } from "@/app/[lang]/mypage/_components/MypageTabs";
-import ProfileRail from "@/features/community/components/ProfileRail";
+import ProfileRail, { ProfileMore } from "@/features/community/components/ProfileRail";
 import ProfileTab from "@/app/[lang]/mypage/_components/ProfileTab";
 import DecksTab from "@/app/[lang]/mypage/_components/DecksTab";
 import PlannerTab from "@/app/[lang]/mypage/_components/PlannerTab";
@@ -18,7 +18,6 @@ import CollectionTab from "@/app/[lang]/mypage/_components/CollectionTab";
 import { type DeckSummary } from "@/components/cards/DeckCard";
 import AchievementGrid, { achievementProgress } from "@/features/community/components/AchievementGrid";
 import { FollowList } from "@/features/community/components/Follows";
-import ProfileSettings from "@/features/community/components/ProfileSettings";
 import Skeleton from "@/components/ui/Skeleton";
 import { getCommunityCopy } from "@/features/community";
 import { EASTER_EGGS, EGGS_KEY, readEggs, type EasterEgg } from "@/lib/easter-eggs";
@@ -50,14 +49,22 @@ async function fetcher(url: string) {
   return r.json();
 }
 
-/** Same layout as the loaded page: rail card and menu on the left, a titled panel on the right. */
+/** Same layout as the loaded page: summary and tab list in the rail (one row each on a phone), a titled panel on the right. */
 export function MypageSkeleton() {
   return (
     <div className={styles.page} role="status" aria-busy="true">
       <div className={`${styles.rail} sticky-under-nav`}>
         <Skeleton className="h-10 w-40 rounded-lg" />
-        <Skeleton line className="h-[27rem] rounded-xl" />
-        <Skeleton line className="hidden h-[19rem] rounded-xl lg:block" />
+        <Skeleton className="h-10 rounded-lg lg:hidden" />
+        <div className="hidden gap-3 lg:grid">
+          <Skeleton className="h-14 rounded-lg" />
+          <Skeleton className="h-24 rounded-lg" />
+          <Skeleton className="h-32 rounded-lg" />
+        </div>
+        <Skeleton className="h-11 rounded-lg lg:hidden" />
+        <div className="hidden gap-0.5 border-t border-[var(--border)] pt-3 lg:grid">
+          {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-11 rounded-lg" />)}
+        </div>
       </div>
       <div className={styles.main}>
         <div className={styles.head}><Skeleton className="h-6 w-32" /></div>
@@ -119,6 +126,10 @@ export default function MypageClient() {
   }, [status, router]);
   const badges = useMemo(() => (community.data ? achievementProgress(community.data.stats, eggs) : []), [community.data, eggs]);
   const earned = badges.filter((badge) => badge.earned).length;
+  function openFollows(kind: "following" | "followers") {
+    setFollowKind(kind);
+    changeTab("follows");
+  }
   function changeTab(tab: MypageTab) {
     setActiveTab(tab);
     localStorage.setItem("mypage-tab", tab);
@@ -160,7 +171,7 @@ export default function MypageClient() {
           <DanteLogo size="2rem" className="text-[var(--gold-light)]" />
           <RailSignOut />
         </div>
-        <ProfileRail data={community.data} onEdit={() => changeTab("profile")} onOpenFollows={(kind) => { setFollowKind(kind); changeTab("follows"); }} />
+        <ProfileRail data={community.data} mine onOpenFollows={openFollows} />
         <MypageTabs activeTab={activeTab} onTabChange={changeTab}
           counts={{ badges: `${earned}/${badges.length}`, decks: data.stats.deckCount, planner: data.stats.planCount }} />
       </div>
@@ -173,6 +184,7 @@ export default function MypageClient() {
         )}
         {activeTab === "badges" && (
           <>
+            <ProfileMore data={community.data} mine onOpenFollows={openFollows} />
             <div className={styles.head}>
               <h2 className={styles.title}>{t.badges}<span className={styles.titleCount}>{earned}/{badges.length}</span></h2>
             </div>
@@ -191,10 +203,8 @@ export default function MypageClient() {
         {activeTab === "profile" && (
           <>
             <div className={styles.head}><h2 className={styles.title}>{t.profile}</h2></div>
-            <div className={styles.settings}>
-              <ProfileTab profile={data.profile} email={data.email} onProfileUpdate={async () => { await Promise.all([mutate(), community.mutate()]); }} />
-              {community.data.settings && <ProfileSettings initial={community.data.settings} onSaved={async () => { await community.mutate(); }} />}
-            </div>
+            <ProfileTab profile={data.profile} email={data.email} settings={community.data.settings}
+              onProfileUpdate={async () => { await Promise.all([mutate(), community.mutate()]); }} onSettingsSaved={async () => { await community.mutate(); }} />
           </>
         )}
       </div>

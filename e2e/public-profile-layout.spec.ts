@@ -23,7 +23,6 @@ for (const width of [1440, 390]) test(`public profile panel and follow controls 
   await follow.press('Enter')
   await expect(panel.getByRole('button', { name: '팔로잉', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(panel.getByRole('link', { name: '공개 프로필 보기' })).toHaveCount(0)
-  await expect(page.locator('.community-settings')).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: `/tmp/limbus-public-profile-${width}.png`, fullPage: true })
   unavailable = true
