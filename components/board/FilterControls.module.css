@@ -44,6 +44,9 @@
 .field{position:relative}
 .field>button.help{cursor:help}.help>span{position:absolute;top:calc(100% + .4rem);right:0;z-index:20;display:none;padding:.45rem .65rem;border:1px solid var(--border);border-radius:.3rem;background:var(--bg-elevated);box-shadow:0 .5rem 1.25rem rgba(0,0,0,.5);color:var(--text-primary);font-size:.8125rem;line-height:1.4;white-space:nowrap}
 .help:hover>span,.help:focus>span{display:block}
+/* The help of a SearchBox sits over the right end of its field, where the box's own clear button takes over once something is typed. */
+.searchHelp{position:relative}
+.searchHelp>button.help{position:absolute;top:50%;right:.25rem;display:grid;place-items:center;width:1.75rem;height:1.75rem;transform:translateY(-50%);color:var(--text-muted);cursor:help}.searchHelp>button.help:hover{color:var(--text-primary)}
 .hint{margin:.5rem 0 0;color:#9c8b73;font-size:.75rem;line-height:1.4}
 @keyframes tick{from{opacity:.35;transform:translateY(.2rem)}}
 @media(prefers-reduced-motion:reduce){.body{animation:none}.chevron,.choice,.tile,.sinner,.action{transition:none}}

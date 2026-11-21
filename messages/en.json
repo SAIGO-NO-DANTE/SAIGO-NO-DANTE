@@ -971,8 +971,6 @@
         "placeholder": "Identity, keyword, title...",
         "clear": "Clear search",
         "hint": "+ for OR, * for AND",
-        "suggestionHeading": "Identity / Keyword",
-        "suggestionHint": "Press Tab to pick",
         "suggestionIdentity": "Identity",
         "suggestionKeyword": "Keyword"
       },
@@ -2483,7 +2481,6 @@
   "identityDecks": {
     "searchPlaceholder": "Search title, description, tags, keywords...",
     "keyword": "Keywords",
-    "tabHint": "Tab to select",
     "latest": "Latest",
     "popular": "Popular",
     "count": "{count, plural, one {# deck} other {# decks}}",

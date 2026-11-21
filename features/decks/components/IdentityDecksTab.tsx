@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import DeckCard, { DeckSummary } from '@/components/cards/DeckCard'
-import { useKeywordData } from '@/components/providers/KeywordProvider'
-import { useAutocompleteKeys } from '@/hooks/useAutocompleteKeys'
+import SearchBox from '@/components/ui/SearchBox'
 import { NoteCardPreview } from '@/features/notes/components/NoteChips'
+import { useBoardSuggest } from '../hooks/useBoardSuggest'
 const PAGE_SIZE = 12
 
 type SortKey = 'latest' | 'popular'
@@ -31,57 +30,17 @@ interface Props {
 
 export default function IdentityDecksTab({ identityId }: Props) {
   const t = useTranslations('identityDecks')
-  const { iconMap: kwIconMap, getIconUrl } = useKeywordData()
-  const ALL_KEYWORDS = useMemo(() => Object.keys(kwIconMap), [kwIconMap])
+  const tSearch = useTranslations('globalSearch')
   const [decks, setDecks] = useState<DeckSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [sort, setSort] = useState<SortKey>('latest')
   const [search, setSearch] = useState('')
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [acIndex, setAcIndex] = useState(-1)
-  const searchRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
-  // 키워드 자동완성 후보
-  const suggestions = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (q.length === 0) return []
-    const matches = ALL_KEYWORDS.filter(kw => kw.toLowerCase().includes(q))
-    matches.sort((a, b) => {
-      const aStarts = a.toLowerCase().startsWith(q) ? 0 : 1
-      const bStarts = b.toLowerCase().startsWith(q) ? 0 : 1
-      if (aStarts !== bStarts) return aStarts - bStarts
-      return a.length - b.length
-    })
-    return matches.slice(0, 8)
-  }, [search, ALL_KEYWORDS])
-
-  useEffect(() => { setAcIndex(suggestions.length > 0 ? 0 : -1) }, [suggestions.length])
-
-  const handleSearchKeyDown = useAutocompleteKeys({
-    open: showSuggestions, count: suggestions.length, index: acIndex, setOpen: setShowSuggestions, setIndex: setAcIndex,
-    onPick: e => {
-      e.currentTarget.blur()
-      setSearch(suggestions[acIndex])
-      setShowSuggestions(false)
-      setAcIndex(-1)
-      setTimeout(() => (e.target as HTMLInputElement).focus(), 0)
-    },
-  })
-
-  // 외부 클릭 시 자동완성 닫기
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false)
-        setAcIndex(-1)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+  // This field has no + or *: the whole query is the word a suggestion completes.
+  const searchGroups = useBoardSuggest({ term: search.trim(), pick: setSearch, titles: { keyword: t('keyword') } })
 
   // 덱 목록 로드 (초기)
   useEffect(() => {
@@ -152,83 +111,7 @@ export default function IdentityDecksTab({ identityId }: Props) {
       {/* 검색 + 정렬 */}
       <div className="flex flex-col sm:flex-row gap-3">
         {/* 검색 + 자동완성 */}
-        <div className="relative flex-1" ref={searchRef}>
-          <svg
-            width="14" height="14" viewBox="0 0 16 16" fill="none"
-            style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none', zIndex: 1 }}
-          >
-            <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/>
-            <path d="M10 10l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          <input
-            type="text"
-            placeholder={t('searchPlaceholder')}
-            value={search}
-            onChange={e => { setSearch(e.target.value); setShowSuggestions(true) }}
-            onFocus={() => setShowSuggestions(true)}
-            onKeyDown={handleSearchKeyDown}
-            className="w-full pl-10 pr-4 py-2.5 text-sm outline-none transition"
-            style={{
-              background: 'var(--bg-panel)',
-              border: '1px solid var(--border)',
-              borderRadius: '4px',
-              color: 'var(--text-primary)',
-              fontFamily: 'var(--font-body)',
-            }}
-          />
-          {search && (
-            <button
-              onClick={() => { setSearch(''); setShowSuggestions(false) }}
-              style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', cursor: 'pointer', zIndex: 1 }}
-            >
-              ✕
-            </button>
-          )}
-          {/* 키워드 자동완성 드롭다운 */}
-          {showSuggestions && suggestions.length > 0 && (
-            <div
-              className="absolute left-0 right-0 z-50 overflow-hidden"
-              style={{
-                top: '100%',
-                marginTop: 4,
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                borderRadius: '4px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-              }}
-            >
-              <div className="px-3 py-1" style={{ background: 'rgba(255,255,255,0.03)', color: '#999', fontSize: '0.75rem', fontWeight: 600 }}>
-                {t('keyword')} <span style={{ color: '#999', fontWeight: 400 }}>{t('tabHint')}</span>
-              </div>
-              {suggestions.map((kw, i) => {
-                const iconUrl = getIconUrl(kw)
-                const isFocused = acIndex === i
-                return (
-                  <div
-                    key={kw}
-                    className="flex items-center gap-2 px-3 py-2 text-xs cursor-pointer"
-                    style={{
-                      color: isFocused ? 'var(--gold-light)' : '#c8b890',
-                      fontFamily: 'var(--font-heading)',
-                      background: isFocused ? 'rgba(200,144,10,0.12)' : 'transparent',
-                      borderLeft: isFocused ? '2px solid var(--gold)' : '2px solid transparent',
-                    }}
-                    onClick={() => {
-                      setSearch(kw)
-                      setShowSuggestions(false)
-                      setAcIndex(-1)
-                    }}
-                  >
-                    {iconUrl && (
-                      <Image src={iconUrl} alt="" width={14} height={14} style={{ flexShrink: 0 }} />
-                    )}
-                    <span>{kw}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+        <SearchBox className="flex-1 self-center" value={search} onChange={setSearch} label={t('searchPlaceholder')} clearLabel={tSearch('clear')} groups={searchGroups} />
 
         {/* 정렬 */}
         <div className="flex gap-1.5">

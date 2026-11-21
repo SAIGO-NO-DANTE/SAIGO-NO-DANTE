@@ -971,8 +971,6 @@
         "placeholder": "人格、キーワード、タイトル...",
         "clear": "検索語をクリア",
         "hint": "+ は OR、* は AND 検索",
-        "suggestionHeading": "人格 / キーワード",
-        "suggestionHint": "Tabで選択",
         "suggestionIdentity": "人格",
         "suggestionKeyword": "キーワード"
       },
@@ -2483,7 +2481,6 @@
   "identityDecks": {
     "searchPlaceholder": "タイトル、説明、タグ、キーワードで検索...",
     "keyword": "キーワード",
-    "tabHint": "Tabで選択",
     "latest": "新着順",
     "popular": "人気順",
     "count": "デッキ{count}件",

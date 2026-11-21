@@ -1,6 +1,7 @@
 import { GIFT_KEYWORD_COLORS } from '@/lib/constants/gift'
 import { SIN_COLORS } from '@/lib/data/sinners'
 import { getKeywordIconUrl } from '@/lib/constants/keywords'
+import { rankItems } from '@/lib/search/rank-items'
 import type { KeywordInfo } from '@/components/providers/KeywordProvider'
 
 // DOM-free part of the note autocomplete: the token syntax, what to suggest for the text before the caret, and the pools.
@@ -231,24 +232,10 @@ export function getNoteAutocompleteSuggestions(
     : currentContext.typeFilter
       ? pool.filter(s => s.syntax !== 'block' && s.type === currentContext.typeFilter)
       : pool.filter(s => s.syntax !== 'block')
-  const matched = typedPool.filter(s => suggestionMatches(s, currentContext.query, currentContext.sinnerName))
-  const starts = matched.filter(s => suggestionStartsWith(s, currentContext.query))
-  const contains = matched.filter(s => !suggestionStartsWith(s, currentContext.query))
-  return [...starts, ...contains].slice(0, 6)
-}
-
-function suggestionMatches(suggestion: AutocompleteSuggestion, query: string, sinnerName?: string): boolean {
-  if (sinnerName) {
-    const parts = getTokenParts(suggestion.token)
-    if (parts[0] !== sinnerName) return false
-  }
-  if (!query) return true
-  return suggestion.label.includes(query) || suggestion.token.includes(query)
-}
-
-function suggestionStartsWith(suggestion: AutocompleteSuggestion, query: string): boolean {
-  if (!query) return true
-  return suggestion.label.startsWith(query) || getTokenParts(suggestion.token).some(part => part.startsWith(query))
+  const { query, sinnerName } = currentContext
+  const ofSinner = sinnerName ? typedPool.filter(s => getTokenParts(s.token)[0] === sinnerName) : typedPool
+  // The parts of the token (the sinner, the identity) find the item too, below the ones named so.
+  return (query ? rankItems(ofSinner, query, s => getTokenParts(s.token)) : ofSinner).slice(0, 6)
 }
 
 export function getSuggestionMeta(suggestion: AutocompleteSuggestion): string | undefined {

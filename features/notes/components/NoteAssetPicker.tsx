@@ -1,5 +1,5 @@
 'use client'
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useLocale } from 'next-intl'
 import useSWR from 'swr'
@@ -15,6 +15,7 @@ import { buildSkillVariantMap, selectIdentitySkills } from '@/lib/identity/skill
 import { normalizeSin, SIN_COLORS } from '@/lib/constants/sin'
 import SkillDescription from '@/features/catalog/components/SkillDescription'
 import { assetName, type NoteAssetData, type NoteFormationMember } from '@/features/notes/lib/assets'
+import { foundAssetIds } from '@/features/notes/lib/asset-search'
 import { NoteAssetArtwork } from './NoteAssetArtwork'
 import { fetchNoteAssets } from './NoteBlockViewer'
 import '@/components/ui/character-picker.css'
@@ -47,7 +48,8 @@ export default function NoteAssetPicker({kind,onSelect,onClose}: {kind:'gift'|'s
   const {data=[],error,isLoading,mutate}=useSWR(kind==='gift' ? '/api/notes/assets?kind=gift&catalog=1' : `/api/notes/assets?kind=skill&identities=${encodeURIComponent(ids)}`,fetchNoteAssets,{revalidateOnFocus:false})
   const counts=new Map<string|null,number>([[null,data.length]])
   for(const a of data) {const slug=getKeywordSlug(a.keyword ?? null);counts.set(slug,(counts.get(slug)??0)+1)}
-  const filtered=data.filter(a=>(!grade || String(a.grade)===grade) && (!sinner || a.identity?.sinner_id===sinner) && (!keyword || getKeywordSlug(a.keyword ?? null)===keyword) && [a.name,a.name_en,a.name_jp].some(name=>name?.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())))
+  const found=useMemo(()=>foundAssetIds(data,query),[data,query])
+  const filtered=data.filter(a=>(!grade || String(a.grade)===grade) && (!sinner || a.identity?.sinner_id===sinner) && (!keyword || getKeywordSlug(a.keyword ?? null)===keyword) && (!found || found.has(a.id)))
   const groups=kind==='gift' ? GRADE_ORDER.map(g=>({id:g,name:`${GRADE_ROMAN[g]??g} ${tr('등급','ランク','Tier')}`,items:filtered.filter(a=>String(a.grade)===g)})) : formation.filter(m=>!sinner||m.sinnerId===sinner).map(m=>({id:m.sinnerId,name:m.name,items:filtered.filter(a=>a.identity?.id===m.identityId).sort((a,b)=>(a.skill?.skill_order??0)-(b.skill?.skill_order??0))}))
   const shown=preview && filtered.some(a=>a.id===preview.id) ? preview : filtered[0]
   const title=kind==='gift'?tr('기프트 추가','ギフトを追加','Add gift'):tr('스킬 추가','スキルを追加','Add skill')

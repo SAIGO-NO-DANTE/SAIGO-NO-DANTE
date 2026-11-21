@@ -105,10 +105,8 @@
   /* ── 덱 필터 표면 토큰 ───────────────────────── */
   --deck-filter-surface-muted: rgba(255,255,255,0.02);
   --deck-filter-surface-active: rgba(200,144,10,0.1);
-  --deck-filter-text: #ccc;
   --deck-filter-text-muted: var(--text-muted);
   --deck-filter-text-soft: var(--text-tertiary);
-  --deck-filter-control-min: 2.25rem;
 }
 
 /* Japanese: M PLUS 1p for all text (Dante's Planner uses HigashiOme Gothic C, an M+ derivative) */

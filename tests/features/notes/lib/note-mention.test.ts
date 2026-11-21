@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { NOTE_PREFIX, assetRefs, hasBlocks, normalizeDocument, notePlainText, notePreviewText, parseBlockDocument } from '@/lib/notes/blocks'
 import { tiptapContentToMarkdown } from '@/features/notes/lib/document'
-import { MENTION_LIMIT, filterMentions, findMentionQuery, mentionHref } from '@/lib/notes/mention'
+import { MENTION_LIMIT, findMentionQuery, mentionHref } from '@/lib/notes/mention'
+import { filterMentions } from '@/lib/notes/mention-search'
 
 const doc = (...content: object[]) => ({ type: 'doc', content })
 const mention = (attrs: object) => ({ type: 'noteMention', attrs })
@@ -66,8 +67,19 @@ describe('typing @ finds identities and E.G.O', () => {
   ]
   it('matches a name in any language and puts names that start with the query first', () => {
     expect(filterMentions(pool, '로쟈', 6).map(p => p.id)).toEqual(['b', 'a'])
-    expect(filterMentions(pool, 'rodion', 6).map(p => p.id)).toEqual(['a', 'b'])
+    // Both have the alias "Rodion" whole: the shorter name comes first (the engine's tie rule), no longer the pool order.
+    expect(filterMentions(pool, 'rodion', 6).map(p => p.id)).toEqual(['b', 'a'])
     expect(filterMentions(pool, 'イサン', 6).map(p => p.id)).toEqual(['c', 'd'])
+  })
+  it('matches initials, a mistyped name and the name typed without its spaces', () => {
+    expect(filterMentions(pool, 'ㄹㅈ', 6).map(p => p.id)).toEqual(['b', 'a'])
+    expect(filterMentions(pool, '로자', 6).map(p => p.id)).toEqual(['b', 'a'])
+    expect(filterMentions(pool, '붉은눈로쟈', 6).map(p => p.id)).toEqual(['a'])
+  })
+  it('stops at the limit, and lists the first entries of the pool for no query', () => {
+    const many = Array.from({ length: 20 }, (_, i) => ({ id: `n${i}`, label: `거미집 ${i}`, aliases: [] as string[] }))
+    expect(filterMentions(many, '거미집', MENTION_LIMIT)).toHaveLength(MENTION_LIMIT)
+    expect(filterMentions(many, '', MENTION_LIMIT).map(p => p.id)).toEqual(many.slice(0, MENTION_LIMIT).map(p => p.id))
   })
   const spider = ['검지 아비|yi-sang|이상', '소지 제자|sinclair|싱클레어', '약지 아비|hong-lu|홍루', '약지 제자|faust|파우스트', '엄지 아비|rodion|로쟈'].map(row => {
     const [name, id, sinner] = row.split('|')
@@ -75,7 +87,8 @@ describe('typing @ finds identities and E.G.O', () => {
   })
   it('matches every word of a name with spaces, in any order and with or without the spaces, and the sinner\'s name', () => {
     expect(filterMentions(spider, '거미집 검지 아비 이상', 12).map(p => p.id)).toEqual(['yi-sang'])
-    expect(filterMentions(spider, '거미집검지', 12).map(p => p.id)).toEqual(['yi-sang'])
+    // 엄지 is one letter off 검지: a name that matches, then the typo below it.
+    expect(filterMentions(spider, '거미집검지', 12).map(p => p.id)).toEqual(['yi-sang', 'rodion'])
     expect(filterMentions(spider, '아비 거미집', 12).map(p => p.id)).toEqual(['yi-sang', 'hong-lu', 'rodion'])
     expect(filterMentions(spider, '거미집 ', 12)).toHaveLength(5)
     expect(MENTION_LIMIT).toBeGreaterThanOrEqual(9)

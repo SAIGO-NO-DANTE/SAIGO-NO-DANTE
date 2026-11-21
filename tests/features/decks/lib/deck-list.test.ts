@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DeckSummary } from '@/components/cards/DeckCard'
-import type { IdentityNameEntry } from '@/features/decks/lib/filter-params'
 import {
-  appendCsvParam, buildDeckDerivedIndex, buildDeckPageParams, buildDeckServerQueryKey, buildDeckSuggestions, collectFilterSinners,
+  appendCsvParam, buildDeckDerivedIndex, buildDeckPageParams, buildDeckServerQueryKey, collectFilterSinners,
   deriveDeckListData, filterDeckList, hasServerBackedFilterParams, mapDeck, mergeDeckRows, normalizeFormationCountParam,
   normalizeInfoScoreParam, normalizeSortKey,
 } from '@/features/decks/lib/deck-list'
@@ -93,35 +92,6 @@ describe('server query', () => {
 
   it('adds the page window to the key', () => {
     expect(buildDeckPageParams('sort=latest', 24).toString()).toBe('sort=latest&limit=12&offset=24')
-  })
-})
-
-describe('suggestions', () => {
-  const ident = (name_kr: string, over: Partial<IdentityNameEntry> = {}) => ({ id: name_kr, name: name_kr, name_kr, sinner_id: '1', folder_name: null, game_id: null, rarity: 1, ...over }) as IdentityNameEntry
-
-  it('is empty without a term', () => {
-    expect(buildDeckSuggestions('', ['화상'], [ident('양')])).toEqual([])
-    expect(buildDeckSuggestions('양 + ', ['화상'], [ident('양')])).toEqual([])
-  })
-
-  it('ranks names that start with the term first, then shorter names, identities before keywords', () => {
-    const out = buildDeckSuggestions('화', ['출화', '화상', '화염상'], [ident('가화'), ident('화랑'), ident('화')])
-    expect(out.map(s => `${s.type}:${s.label}`)).toEqual(['identity:화', 'identity:화랑', 'identity:가화', 'keyword:화상', 'keyword:화염상', 'keyword:출화'])
-  })
-
-  it('reads the term after the last + or *, case-insensitively, and caps each group at 5 and the total at 8', () => {
-    const identities = Array.from({ length: 9 }, (_, i) => ident(`Ab${i}`))
-    const keywords = Array.from({ length: 9 }, (_, i) => `ab${i}`)
-    const out = buildDeckSuggestions('x + AB', keywords, identities)
-    expect(out).toHaveLength(8)
-    expect(out.filter(s => s.type === 'identity')).toHaveLength(5)
-    expect(out.filter(s => s.type === 'keyword')).toHaveLength(3)
-  })
-
-  it('gives a portrait only when the identity has all three ids', () => {
-    const out = buildDeckSuggestions('a', [], [ident('a1', { game_id: '10101', folder_name: 'f' }), ident('a2', { game_id: '10102' })])
-    expect(out[0].imageUrl).toEqual(expect.stringContaining('10101'))
-    expect(out[1].imageUrl).toBeUndefined()
   })
 })
 
