@@ -3,11 +3,11 @@ import { useMemo } from "react";
 import useSWR from "swr";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/lib/i18n/navigation";
-import { Layers, Map as MapIcon } from "lucide-react";
 import ProfileRail from "./ProfileRail";
 import AchievementGrid from "./AchievementGrid";
 import DeckCard from "@/components/cards/DeckCard";
 import PlanCard from "@/components/cards/PlanCard";
+import Button from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import { getCommunityCopy } from "@/features/community/lib/copy";
 import { achievementProgress } from "@/features/community/lib/achievements";
@@ -35,7 +35,7 @@ export default function PublicProfile({ id }: { id: string }) {
       <div className={`${styles.page} ${styles.withNav}`}>
         <div className={`${styles.empty} lg:col-span-2`} role="alert">
           <p>{error.status === 404 ? t.unavailable : t.error}</p>
-          {error.status !== 404 && <button type="button" className={styles.ghost} onClick={() => void mutate()}>{t.retry}</button>}
+          {error.status !== 404 && <Button onClick={() => void mutate()}>{t.retry}</Button>}
         </div>
       </div>
     );
@@ -91,7 +91,7 @@ export default function PublicProfile({ id }: { id: string }) {
           {data.decks.length ? (
             <ul className={styles.list}>{data.decks.map((deck) => <li key={deck.id} className={styles.item}><DeckCard deck={deck} NotePreview={NoteCardPreview} /></li>)}</ul>
           ) : (
-            <div className={styles.empty}><Layers aria-hidden="true" /><p>{t.noDecks}</p></div>
+            <div className={styles.empty}><p>{t.noDecks}</p></div>
           )}
         </section>
         <section className={styles.section}>
@@ -101,7 +101,7 @@ export default function PublicProfile({ id }: { id: string }) {
           {data.plans.length ? (
             <ul className={styles.list}>{data.plans.map((plan) => <li key={plan.id} className={styles.item}><PlanCard plan={plan} NotePreview={NoteCardPreview} /></li>)}</ul>
           ) : (
-            <div className={styles.empty}><MapIcon aria-hidden="true" /><p>{t.noPlans}</p></div>
+            <div className={styles.empty}><p>{t.noPlans}</p></div>
           )}
         </section>
       </div>

@@ -18,6 +18,7 @@ import CollectionTab from "@/app/[lang]/mypage/_components/CollectionTab";
 import { type DeckSummary } from "@/components/cards/DeckCard";
 import AchievementGrid, { achievementProgress } from "@/features/community/components/AchievementGrid";
 import { FollowList } from "@/features/community/components/Follows";
+import Button from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import { getCommunityCopy } from "@/features/community";
 import { EASTER_EGGS, EGGS_KEY, readEggs, type EasterEgg } from "@/lib/easter-eggs";
@@ -49,26 +50,47 @@ async function fetcher(url: string) {
   return r.json();
 }
 
-/** Same layout as the loaded page: summary and tab list in the rail (one row each on a phone), a titled panel on the right. */
+/** Same structure and heights as the loaded default tab (decks): the rail with its top row, summary and six tab rows; the switch row and card placeholders on the right. */
 export function MypageSkeleton() {
   return (
     <div className={styles.page} role="status" aria-busy="true">
       <div className={`${styles.rail} sticky-under-nav`}>
-        <Skeleton className="h-10 w-40 rounded-lg" />
-        <Skeleton className="h-10 rounded-lg lg:hidden" />
-        <div className="hidden gap-3 lg:grid">
-          <Skeleton className="h-14 rounded-lg" />
-          <Skeleton className="h-24 rounded-lg" />
-          <Skeleton className="h-32 rounded-lg" />
+        <div className={styles.top}>
+          <Skeleton className="mr-auto h-10 w-40 rounded-lg" />
+          <Skeleton className="h-8 w-8" />
+          <Skeleton className="h-11 w-20 rounded-lg" />
         </div>
-        <Skeleton className="h-11 rounded-lg lg:hidden" />
-        <div className="hidden gap-0.5 border-t border-[var(--border)] pt-3 lg:grid">
-          {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-11 rounded-lg" />)}
+        <div>
+          <div className={styles.who}>
+            <Skeleton className="h-10 w-10 rounded-full lg:h-14 lg:w-14" />
+            <div className="grid gap-1.5">
+              <Skeleton className="h-6 w-28" />
+              <Skeleton className="hidden h-4 w-24 lg:block" />
+            </div>
+            <Skeleton className="ml-auto h-8 w-16 lg:hidden" />
+          </div>
+          <div className="mt-3.5 hidden gap-3 lg:grid">
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-11 w-44 rounded-lg" />
+            <Skeleton className="h-10 w-52 rounded-lg" />
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-1 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </div>
+        <div className={styles.nav}>
+          {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-11 w-24 shrink-0 rounded-lg lg:w-full" />)}
         </div>
       </div>
       <div className={styles.main}>
-        <div className={styles.head}><Skeleton className="h-6 w-32" /></div>
-        <Skeleton line className="h-[24rem] rounded-xl" />
+        <div className={styles.tabsHead}>
+          <div className={styles.sub}>
+            <Skeleton className="h-11 w-24 rounded-lg" />
+            <Skeleton className="h-11 w-28 rounded-lg" />
+          </div>
+          <Skeleton className="mb-2 h-11 w-28 rounded-lg" />
+        </div>
+        <div className={styles.list}>{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} line className="h-[17rem] rounded-lg" />)}</div>
       </div>
     </div>
   );
@@ -158,7 +180,7 @@ export default function MypageClient() {
       <div className={styles.page}>
         <div className={`${styles.empty} lg:col-span-2`} role="alert">
           <p>{t.error}</p>
-          <button type="button" className={styles.ghost} onClick={() => { void mutate(); void community.mutate(); }}>{t.retry}</button>
+          <Button onClick={() => { void mutate(); void community.mutate(); }}>{t.retry}</Button>
         </div>
       </div>
     );
@@ -177,9 +199,9 @@ export default function MypageClient() {
       </div>
       <div className={styles.main} role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
         {guestDecks + guestPlans > 0 && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-[#5a4526] bg-[#17120c] px-4 py-2.5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[var(--border)] pb-3">
             <p className="m-0 min-w-0 text-[0.9375rem] text-[var(--text-primary)]">{guestT.notice(guestDecks, guestPlans)}</p>
-            <button type="button" className={styles.primary} onClick={claimGuest} disabled={claiming}>{claiming ? guestT.claiming : guestT.claim}</button>
+            <Button variant="primary" onClick={claimGuest} loading={claiming}>{claiming ? guestT.claiming : guestT.claim}</Button>
           </div>
         )}
         {activeTab === "badges" && (
@@ -197,7 +219,7 @@ export default function MypageClient() {
         {activeTab === "follows" && (
           <>
             <div className={styles.head}><h2 className={styles.title}>{t.follows}</h2></div>
-            <div className={styles.panel}><FollowList key={followKind} id={community.data.profile.id} initialKind={followKind} /></div>
+            <FollowList key={followKind} id={community.data.profile.id} initialKind={followKind} />
           </>
         )}
         {activeTab === "profile" && (
