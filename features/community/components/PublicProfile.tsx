@@ -42,7 +42,11 @@ export default function PublicProfile({ id }: { id: string }) {
   if (!data)
     return (
       <div className={`${styles.page} ${styles.withNav}`} role="status" aria-busy="true">
-        <div className={`${styles.rail} sticky-under-nav`}><Skeleton line className="h-[24rem] rounded-xl" /></div>
+        <div className={`${styles.rail} sticky-under-nav`}>
+          <Skeleton className="h-14 rounded-lg" />
+          <Skeleton className="h-24 rounded-lg" />
+          <Skeleton className="h-32 rounded-lg" />
+        </div>
         <div className={styles.main}>
           <div className={styles.head}><Skeleton className="h-6 w-28" /></div>
           <Skeleton line className="h-40 rounded-xl" />

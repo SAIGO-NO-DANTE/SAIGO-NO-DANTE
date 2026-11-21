@@ -11,12 +11,7 @@
 .back:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 2px; }
 
 .card { border: 1px solid #2e2417; border-radius: 0.75rem; background: var(--bg-panel); padding: 1.25rem; }
-.who { display: flex; align-items: center; gap: 1rem; }
-.avatar { flex-shrink: 0; width: 4.5rem; height: 4.5rem; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px var(--bg-deep), 0 0 0 3px #5a4526; }
-.name { margin: 0; color: #f0e6d2; font: 1.375rem/1.25 var(--font-heading), var(--font-body); word-break: keep-all; overflow-wrap: anywhere; }
-.joined { margin: 0.25rem 0 0; color: #8a7d69; font-size: 0.8125rem; }
-.bio { margin: 1rem 0 0.25rem; color: var(--text-secondary); font-size: 0.9375rem; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
-.bio[data-empty] { color: var(--text-muted); }
+.name { margin: 0; color: var(--text-primary); font: 1.375rem/1.25 var(--font-heading), var(--font-body); word-break: keep-all; overflow-wrap: anywhere; }
 .links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
 
 .ghost, .primary {
@@ -27,43 +22,60 @@
 .ghost:hover { background: var(--bg-elevated); }
 .ghost svg, .primary svg { width: 1rem; height: 1rem; }
 .icon { width: 2.5rem; padding: 0; }
-.edit { position: absolute; top: 0.75rem; right: 0.75rem; width: 2.25rem; min-height: 2.25rem; border-color: transparent; color: #9c8b73; }
-.edit:hover { color: var(--text-primary); }
-.who { padding-right: 2rem; }
 .primary { border: 0; background: var(--gold); color: var(--bg-deep); }
 .primary:hover { filter: brightness(1.1); }
 .ghost:focus-visible, .primary:focus-visible, .navItem:focus-visible, .seg button:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 2px; }
 
 .score { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #2e2417; }
-.scoreLabel { margin: 0; color: #9c8b73; font: 600 0.8125rem var(--font-body); }
-.points { display: block; margin-top: 0.25rem; color: var(--gold-light); font: 3rem/1 var(--font-title); letter-spacing: 0.02em; }
-.meter { height: 0.375rem; margin-top: 0.75rem; overflow: hidden; border-radius: 999px; background: var(--bg-elevated); }
-.meter > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #b88008, var(--gold-light)); transform-origin: left; transition: transform 400ms ease; }
-.next { margin: 0.375rem 0 0; color: #8a7d69; font-size: 0.75rem; }
-.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 1rem 0 0; }
-.stat { display: flex; min-width: 0; flex-direction: column; gap: 0.3125rem; padding: 0.625rem 0.75rem; border: 1px solid #241c14; border-radius: 0.5rem; background: #17120c; }
-.stat dt { display: flex; align-items: center; gap: 0.375rem; color: #9c8b73; font-size: 0.75rem; line-height: 1.3; overflow-wrap: anywhere; }
-.stat dt svg { width: 0.875rem; height: 0.875rem; flex-shrink: 0; }
-.stat dd { margin: 0; color: var(--text-primary); font: 1.5rem/1 var(--font-title); letter-spacing: 0.02em; }
+.scoreLabel { margin: 0; color: var(--text-secondary); font: 600 0.8125rem var(--font-body); }
 
-/* Tab menu: a row on mobile, a vertical list in the rail on desktop. */
-.nav { display: flex; gap: 0.25rem; overflow-x: auto; border-bottom: 1px solid #2e2417; scrollbar-width: none; }
+/* Profile summary (my page and public profiles): no box, the rail's spacing sets it apart. */
+.summary { min-width: 0; }
+.who { display: flex; align-items: center; gap: 0.875rem; }
+.avatar { flex-shrink: 0; width: 3.5rem; height: 3.5rem; border: 1px solid var(--border); border-radius: 50%; object-fit: cover; }
+.joined { margin: 0.25rem 0 0; color: var(--text-tertiary); font-size: 0.8125rem; }
+.about, .more { display: grid; gap: 0.25rem; }
+.about { margin-top: 0.875rem; }
+.bio { margin: 0; color: var(--text-secondary); font-size: 0.9375rem; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+.bio[data-empty] { color: var(--text-muted); }
+.tally { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.5rem; margin-top: 0.75rem; }
+.points { color: var(--gold-light); font: 1.75rem/1.2 var(--font-title); letter-spacing: 0.02em; }
+.figures { display: grid; flex-basis: 100%; gap: 0.625rem; margin-top: 0.5rem; }
+.meter { height: 0.25rem; overflow: hidden; border-radius: var(--radius-sm); background: var(--bg-elevated); }
+.meter > span { display: block; height: 100%; border-radius: inherit; background: var(--gold); transform-origin: left; transition: transform 400ms ease; }
+.next { margin: 0; color: var(--text-tertiary); font-size: 0.75rem; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem 1.25rem; margin: 0.25rem 0 0; }
+.stats > div { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.stats dt { color: var(--text-secondary); font-size: 0.8125rem; line-height: 1.3; overflow-wrap: anywhere; }
+.stats dd { margin: 0; color: var(--text-primary); font: 1.125rem/1 var(--font-title); letter-spacing: 0.02em; }
+/* On a phone my page keeps avatar, name and points in one row; `.more` (top of the badges tab) carries the rest. */
+.more { gap: 0.625rem; margin-bottom: 1.5rem; }
+@media (width < 64rem) {
+  .summary[data-compact] { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 0.75rem; }
+  .summary[data-compact] :is(.about, .figures, .joined) { display: none; }
+  .summary[data-compact] .avatar { width: 2.5rem; height: 2.5rem; }
+  .summary[data-compact] .name { overflow: hidden; font-size: 1.125rem; text-overflow: ellipsis; white-space: nowrap; }
+  .summary[data-compact] .tally { flex-wrap: nowrap; margin-top: 0; }
+}
+
+/* Tab menu: a row on mobile, a vertical list in the rail on desktop (one hairline above it, no box). */
+.nav { display: flex; gap: 0.25rem; overflow-x: auto; border-bottom: 1px solid var(--border); scrollbar-width: none; }
 .nav::-webkit-scrollbar { display: none; }
 .navItem {
-  display: flex; min-height: 2.75rem; flex-shrink: 0; align-items: center; gap: 0.5rem; padding: 0 0.875rem; border: 0; background: none;
-  color: #9c8b73; font: 600 0.9375rem var(--font-body); white-space: nowrap; cursor: pointer; box-shadow: inset 0 -2px 0 transparent;
+  display: flex; min-height: 2.75rem; flex-shrink: 0; align-items: center; gap: 0.5rem; padding: 0 0.875rem; border: 0; border-bottom: 2px solid transparent; background: none;
+  color: var(--text-secondary); font: 600 0.9375rem var(--font-body); white-space: nowrap; cursor: pointer;
   transition: color 150ms, background-color 150ms;
 }
 .navItem svg { width: 1rem; height: 1rem; flex-shrink: 0; }
 .navItem:hover { color: var(--text-primary); }
-.navItem[aria-selected='true'] { color: #f0e6d2; box-shadow: inset 0 -2px 0 var(--gold); }
-.navCount { margin-left: auto; padding-left: 0.5rem; color: #8a7d69; font: 1rem/1 var(--font-title); letter-spacing: 0.02em; }
+.navItem[aria-selected='true'] { color: var(--text-primary); border-bottom-color: var(--gold); }
+.navCount { margin-left: auto; padding-left: 0.5rem; color: var(--text-muted); font: 1rem/1 var(--font-title); letter-spacing: 0.02em; }
 .navItem[aria-selected='true'] .navCount { color: var(--gold-light); }
 
 /* Sign-out sits in the rail's top row, outside the tab list. */
 .logout {
   display: inline-flex; min-width: 2.75rem; min-height: 2.75rem; align-items: center; justify-content: center; gap: 0.375rem; padding: 0 0.625rem; border: 0; border-radius: 0.5rem;
-  background: none; color: #9c8b73; font: 600 0.875rem var(--font-body); white-space: nowrap; cursor: pointer; transition: color 150ms;
+  background: none; color: var(--text-secondary); font: 600 0.875rem var(--font-body); white-space: nowrap; cursor: pointer; transition: color 150ms;
 }
 .logout svg { width: 1rem; height: 1rem; flex-shrink: 0; }
 .logout:hover { color: var(--text-primary); }
@@ -108,15 +120,27 @@
 .danger:hover { filter: brightness(1.12); }
 
 .panel { border: 1px solid #2e2417; border-radius: 0.75rem; background: var(--bg-panel); padding: 1.25rem; }
-.settings { display: grid; gap: 1rem; align-items: start; }
+
+/* Settings tab: one column, each section a title with one hairline, no boxes. */
+.settings { display: grid; max-width: 40rem; gap: 2rem; }
+.group { display: grid; gap: 0.25rem; }
+.groupTitle { display: flex; align-items: center; gap: 0.75rem; margin: 0 0 0.5rem; color: var(--text-primary); font: 1.0625rem var(--font-heading), var(--font-body); }
+.groupTitle::after { content: ''; height: 1px; flex: 1; background: var(--border); }
+.row { display: flex; min-height: 2.75rem; align-items: center; justify-content: space-between; gap: 1rem; color: var(--text-primary); font-size: 0.9375rem; }
+.form { display: grid; gap: 1rem; }
+.form label { display: grid; gap: 0.375rem; color: var(--text-secondary); font-size: 0.875rem; }
+.form :is(input, textarea) { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid var(--border-control); border-radius: var(--radius-sm); background: var(--bg-panel); color: var(--text-primary); font: 0.9375rem var(--font-body); }
+.form :is(input, textarea):focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.form textarea { min-height: 7rem; resize: vertical; }
 
 @media (min-width: 64rem) {
   .page { grid-template-columns: 19rem minmax(0, 1fr); align-items: start; gap: 2rem; }
   .page .rail { position: sticky; top: 1.25rem; }
-  .nav { flex-direction: column; gap: 2px; padding: 0.375rem; border: 1px solid #2e2417; border-radius: 0.75rem; background: var(--bg-panel); overflow: visible; }
-  .navItem { padding: 0 0.75rem; border-radius: 0.5rem; box-shadow: none; }
-  .navItem[aria-selected='true'] { background: var(--bg-elevated); box-shadow: inset 2px 0 0 var(--gold); }
-  .settings { grid-template-columns: minmax(0, 1fr) 20rem; }
+  .rail { gap: 1.25rem; }
+  .nav { flex-direction: column; gap: 2px; padding-top: 0.75rem; border-top: 1px solid var(--border); border-bottom: 0; overflow: visible; }
+  .navItem { padding: 0 0.75rem; border-bottom: 0; border-left: 2px solid transparent; }
+  .navItem[aria-selected='true'] { background: var(--bg-elevated); border-left-color: var(--gold); }
+  .more { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .meter > span, .ghost, .primary, .navItem, .seg button, .itemAction { transition: none; } }
 

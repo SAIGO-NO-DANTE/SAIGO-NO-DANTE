@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useLocale } from 'next-intl'
 import { Archive, Layers, LogOut, Map as MapIcon, Medal, Settings, Users } from 'lucide-react'
 import { getCommunityCopy } from '@/features/community'
@@ -36,6 +36,11 @@ export default function MypageTabs({ activeTab, onTabChange, counts }: {
 }) {
   const t = getCommunityCopy(useLocale())
   const listRef = useRef<HTMLDivElement>(null)
+  // On a phone the tabs are one row that scrolls sideways: the selected tab is brought into it (the page itself does not move).
+  useEffect(() => {
+    const list = listRef.current, tab = list?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (list && tab) list.scrollLeft += tab.getBoundingClientRect().left - list.getBoundingClientRect().left - (list.clientWidth - tab.offsetWidth) / 2
+  }, [activeTab])
   // Arrow keys move between tabs (both directions work in the row and the vertical list).
   const onKeyDown = useCallback((event: React.KeyboardEvent) => {
     const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0
