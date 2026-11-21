@@ -13,6 +13,7 @@ import NoteCharacterPicker from './NoteCharacterPicker'
 import BaseModal from '@/components/ui/BaseModal'
 import Dropdown from '@/components/ui/Dropdown'
 import { BLOCK_LABELS, CALLOUT_VARIANTS, CARD_KINDS, CARD_ID, isAssetKind, blockLabel, newBlock, youtubeId, type BlockKind, type AssetKind } from '@/lib/notes/blocks'
+import { matchBlockKinds } from '@/features/notes/lib/block-menu'
 import { isMentionKind } from '@/lib/notes/mention'
 import { duplicateBlockAtTr, duplicateBlockTr, moveBlockAtTr, moveBlockTr } from '@/features/notes/lib/block-ops'
 import { isRichClipboardHtml, pastedMarkdownContent } from '@/features/notes/lib/document'
@@ -282,7 +283,7 @@ export function NoteBlockMenu({editor}:{editor:Editor|null}) {
     else insertNoteBlock(editor,kind,range)
     setOpen(false);setSlash(null)
   }
-  const kinds=(Object.keys(BLOCK_LABELS) as BlockKind[]).filter(k=>!slash || [...BLOCK_LABELS[k],k,k==='ego'?'에고':''].join(' ').toLowerCase().includes(slash.query.toLowerCase()))
+  const kinds=matchBlockKinds(slash?.query ?? '')
   useEffect(()=>{
     if(!editor)return
     const update=()=>{const s=editor.state.selection,before=s.$from.parent.textBetween(0,s.$from.parentOffset,'\n');const match=before.match(/(?:^|\s)\/([^\s/]*)$/);setSlash(s.empty&&match?{from:s.from-match[1].length-1,to:s.from,query:match[1]}:null);setIndex(0)}

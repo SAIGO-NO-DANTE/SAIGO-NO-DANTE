@@ -24,25 +24,3 @@ export function findMentionQuery(before: string): { query: string; length: numbe
   if (query.length > MAX_QUERY || /^\s|\s\s|[\n\ufffc]/.test(query)) return null
   return { query, length: query.length + 1 }
 }
-
-const compact = (value: string) => value.toLowerCase().replace(/\s+/g, '')
-
-/**
- * Pool entries that match the query in any language: the whole query (spaces ignored) at the start of a name first, then at
- * the start of another name, then inside one, then every word of the query somewhere in its names (the sinner's name counts),
- * each group in pool order. A bare `@` lists the first ones.
- */
-export function filterMentions<T extends { label: string; aliases?: string[] }>(pool: T[], query: string, limit: number): T[] {
-  const whole = compact(query)
-  if (!whole) return pool.slice(0, limit)
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
-  const ranked: { item: T; rank: number; at: number }[] = []
-  pool.forEach((item, at) => {
-    const names = [item.label, ...(item.aliases ?? [])].map(name => name.toLowerCase())
-    const squeezed = names.map(compact), all = names.join(' ')
-    const rank = squeezed[0].startsWith(whole) ? 0 : squeezed.some(name => name.startsWith(whole)) ? 1
-      : squeezed.some(name => name.includes(whole)) ? 2 : words.every(word => all.includes(word)) ? 3 : -1
-    if (rank >= 0) ranked.push({ item, rank, at })
-  })
-  return ranked.sort((a, b) => a.rank - b.rank || a.at - b.at).slice(0, limit).map(entry => entry.item)
-}
