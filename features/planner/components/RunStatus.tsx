@@ -3,12 +3,15 @@
 import { useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import dynamic from 'next/dynamic'
-import { Search } from 'lucide-react'
 import type { RunState, RunAction } from '@/features/planner/lib/run-types'
 import type { GiftData, RecipeData } from '@/lib/planner/types'
-import GiftArtwork from '@/components/ui/GiftArtwork'
+import SearchBox from '@/components/ui/SearchBox'
+import { pickGroup } from '@/components/ui/SearchRows'
 import GiftCard from '@/features/mirror-dungeon/components/GiftCard'
+import { giftEntries } from '@/features/planner/lib/gift-search'
 import { localizeRowName } from '@/lib/i18n/localize'
+import { pickerFound } from '@/lib/search/picker-search'
+import { translations } from '@/lib/i18n/translations'
 import type { SupportedLang } from '@/lib/i18n/types'
 import { runSectionTitle } from './GiftCheckSection'
 import InventoryPanel from './InventoryPanel'
@@ -29,6 +32,7 @@ interface Props {
  */
 export default function RunStatus({ state, dispatch, gifts, giftMap, recipes }: Props) {
   const t = useTranslations('planner.run')
+  const clearLabel = useTranslations('globalSearch')('clear')
   const locale = useLocale() as SupportedLang
   const localized = (gift: GiftData) => localizeRowName(gift, locale)
   const ownedIds = useMemo(() => new Set(state.giftInventory.map(String)), [state.giftInventory])
@@ -44,11 +48,9 @@ export default function RunStatus({ state, dispatch, gifts, giftMap, recipes }: 
     const trigger = modalTrigger.current
     requestAnimationFrame(() => { if (trigger?.isConnected) trigger.focus() })
   }
-  const results = useMemo(() => {
-    const needle = search.trim().toLocaleLowerCase()
-    return needle ? gifts.filter(gift => localized(gift).toLocaleLowerCase().includes(needle)) : []
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, gifts, locale])
+  const entries = useMemo(() => giftEntries(gifts, { locale }), [gifts, locale])
+  // A gift found only by its effect is no name to suggest.
+  const { list, top } = pickerFound(entries, gifts, gift => gift.id, search, (_, hit) => hit.kind !== 'text')
 
   return (
     <div data-run-status role="region" aria-label={t('viewOverview')} className="flex min-w-0 flex-col gap-8 lg:order-2 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:border-l lg:border-[var(--border)] lg:px-6">
@@ -73,29 +75,12 @@ export default function RunStatus({ state, dispatch, gifts, giftMap, recipes }: 
             })}
           </ul>
         </> : <p className="mb-3 text-xs leading-5 text-[var(--text-tertiary)]">{t('noTargetsHint')}</p>}
-        <div className="relative max-w-sm">
-          <Search aria-hidden="true" size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-          <input aria-label={t('addTargetGift')} value={search} onChange={event => setSearch(event.target.value)} placeholder={t('addTargetGift')}
-            className="min-h-10 w-full rounded-md border border-[var(--border)] bg-[var(--bg-panel)] pl-8 pr-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:border-[var(--gold)] focus-visible:outline-none" />
-          {search.trim() && <p role="status" className="sr-only">{t('giftSearchCount', { count: results.length })}</p>}
-          {results.length > 0 && (
-            <ul className="absolute inset-x-0 top-full z-30 mt-1 max-h-60 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg-card)] shadow-[0_0.5rem_1.5rem_rgba(0,0,0,0.5)]">
-              {results.map(gift => {
-                const isTarget = targetIds.has(gift.game_id)
-                return (
-                  <li key={gift.game_id}>
-                    <button type="button" disabled={isTarget} onClick={() => { dispatch({ type: 'ADD_TARGET_GIFT', giftId: String(gift.game_id) }); setSearch('') }}
-                      className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm text-[var(--text-primary)] hover:bg-[rgba(200,144,10,0.1)] disabled:opacity-50">
-                      <span className="w-8 shrink-0"><GiftArtwork gift={gift} displayName={localized(gift)} sizes="32px" /></span>
-                      <span className="min-w-0 flex-1 truncate">{localized(gift)}</span>
-                      {isTarget && <span className="text-xs text-[var(--gold)]">{t('added')}</span>}
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
+        <SearchBox className="max-w-sm" value={search} onChange={setSearch} label={t('addTargetGift')} clearLabel={clearLabel}
+          groups={[pickGroup(translations['mirrorDungeon.tab.gifts'][locale], top,
+            // A gift already a target is listed as added; picking it only empties the field.
+            gift => { if (!targetIds.has(gift.game_id)) dispatch({ type: 'ADD_TARGET_GIFT', giftId: String(gift.game_id) }); setSearch('') },
+            gift => targetIds.has(gift.game_id) ? t('added') : undefined)]} />
+        {search.trim() && <p role="status" className="sr-only">{t('giftSearchCount', { count: list.length })}</p>}
       </section>
       <InventoryPanel state={state} dispatch={dispatch} giftMap={giftMap} recipes={recipes} />
       {modalGift && <PlannerGiftModal gift={modalGift} onClose={closeModal} gifts={gifts} />}

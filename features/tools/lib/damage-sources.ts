@@ -222,7 +222,7 @@ export function keywordModifier({ name, label, values, stack, side, effects }: O
 }
 
 /** A modifier that carries its game-read effects: a count (stacks) when any of them is per stack. */
-function effectsModifier(name: string, effects: AbilityEffect[], extra: Partial<NewModifier>): NewModifier {
+export function effectsModifier(name: string, effects: AbilityEffect[], extra: Partial<NewModifier>): NewModifier {
   const summary = effectSummary(effects, 1)
   return { name, effects, target: summary.target, value: summary.value, ...(effects.some(effect => effect.scaled) ? { stacks: 1 } : {}), ...extra }
 }
@@ -238,37 +238,3 @@ export type SourceGroup = Side | 'gift'
 /** What a candidate of a picker already stands for among the applied modifiers: the same gift, or the same keyword on the same side. */
 export const findApplied = <T extends NewModifier>(modifiers: readonly T[], { gift, keyword, side }: NewModifier): T | undefined =>
   modifiers.find(other => gift ? other.gift?.id === gift.id : !!keyword && !other.gift && other.keyword === keyword && (other.side ?? 'self') === (side ?? 'self'))
-
-/**
- * What a typed name may mean: keywords and gifts whose shown name contains it, names that start with it first. A gift
- * is offered once, at its first level: its enhancement level is switched where the gift is edited.
- * With a `group`, only that group is searched, and before a name is typed all of it is offered.
- */
-export function suggestDamageSources(sources: DamageSources, query: string, { group, limit = group ? Infinity : 8 }: { group?: SourceGroup; limit?: number } = {}): DamageSuggestion[] {
-  const needle = query.trim().toLocaleLowerCase()
-  if (!needle && !group) return []
-  const rows: DamageSuggestion[] = []
-  for (const keyword of group === 'gift' ? [] : sources.keywords) {
-    if (group && keyword.side !== group) continue
-    const effectsOnly = keyword.effects?.length ? effectSummary(keyword.effects, 1) : null
-    rows.push({
-      key: `k:${keyword.name}:${keyword.side}`, kind: 'keyword', label: keyword.label, modifier: keywordModifier(keyword),
-      ...(keyword.stack ? { perStack: keyword.stack.perStack } : {}),
-      // A scaled effect is offered per stack, a flat one as its value.
-      ...(effectsOnly && keyword.effects!.some(effect => effect.scaled) ? { perStack: effectsOnly.value } : {}),
-      ...(keyword.effects && !keyword.effects.length ? { inert: true } : {}),
-    })
-  }
-  for (const gift of group && group !== 'gift' ? [] : sources.gifts) {
-    const stage = gift.stages[0] ?? { level: 0, values: [] as number[] }
-    const values = stage.values.slice(0, MAX_MODIFIER_OPTIONS)
-    const giftArt = { id: gift.id, level: stage.level, image_url: gift.image_url, grade: gift.grade, keyword: gift.keyword }
-    rows.push({ key: `g:${gift.id}`, kind: 'gift', label: gift.label, modifier: gift.effects?.length
-      ? effectsModifier(gift.label, gift.effects, { gift: giftArt })
-      : { name: gift.label, value: values[0] ?? 0, options: values, target: 'damage', gift: giftArt } })
-  }
-  if (!needle) return rows.slice(0, limit)
-  const position = (row: DamageSuggestion) => row.label.toLocaleLowerCase().indexOf(needle)
-  // sort is stable: within "starts with" and within "contains", keywords stay ahead of gifts in list order.
-  return rows.filter(row => position(row) >= 0).sort((a, b) => Math.min(position(a), 1) - Math.min(position(b), 1)).slice(0, limit)
-}

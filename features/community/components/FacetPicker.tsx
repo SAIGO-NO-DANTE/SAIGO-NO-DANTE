@@ -3,8 +3,10 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import Image from 'next/image'
 import { useLocale, useTranslations } from 'next-intl'
-import { Plus, Search, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import BaseModal from '@/components/ui/BaseModal'
+import SearchBox, { type SuggestGroup } from '@/components/ui/SearchBox'
+import { pickGroup } from '@/components/ui/SearchRows'
 import { FilterPicked, FilterSection, FilterTextButton, filterStyles } from '@/components/board/FilterControls'
 import ThemePackCard from '@/components/ui/ThemePackCard'
 import EgoDisplayCard from '@/components/cards/EgoDisplayCard'
@@ -14,6 +16,9 @@ import type { GiftData } from '@/lib/planner/types'
 import type { SupportedLang } from '@/lib/i18n/types'
 import { getLocalizedAffiliation } from '@/lib/i18n/localize'
 import { getSinnerLogoUrl } from '@/lib/utils/images'
+import { pickerFound } from '@/lib/search/picker-search'
+import { themePackEntries } from '@/lib/search/theme-pack-entries'
+import { affiliationEntries } from '@/features/community/lib/facet-search'
 import { getAffiliationIconUrl } from '@/lib/constants/affiliation-icons'
 import { SINNER_SLUGS } from '@/lib/constants/game'
 import type { BoardFacets } from '@/features/community/hooks/useBoardFacets'
@@ -38,13 +43,9 @@ function Count({ value }: { value: number }) {
   return <p className="mt-1 text-center text-[0.75rem] text-[var(--text-muted)]">{t('postCount', { count: value })}</p>
 }
 
-function NameSearch({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
-  return (
-    <label className={`${filterStyles.field} mb-4 max-w-[24rem]`}>
-      <Search size={16} aria-hidden="true" />
-      <input type="search" value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} aria-label={placeholder} className={filterStyles.fieldInput} />
-    </label>
-  )
+function NameSearch({ value, onChange, label, groups }: { value: string; onChange: (value: string) => void; label: string; groups: SuggestGroup[] }) {
+  const clearLabel = useTranslations('globalSearch')('clear')
+  return <SearchBox value={value} onChange={onChange} label={label} clearLabel={clearLabel} groups={groups} className="mb-4 max-w-[24rem]" />
 }
 
 /**
@@ -66,18 +67,20 @@ export function FacetPickerModal({ kind, facets, selected, onToggle, onClose }: 
   const giftFilters = useGiftCatalogFilters()
   const catalogGifts = useMemo(() => (facets?.gifts ?? []).map(gift => toCatalogGift(gift as unknown as GiftData)), [facets])
   const selectedSet = useMemo(() => new Set(selected), [selected])
-  const match = (...names: (string | null | undefined)[]) => {
-    const text = query.trim().toLocaleLowerCase()
-    return !text || names.some(name => name?.toLocaleLowerCase().includes(text))
-  }
+  // Searched by the shared engine; the list keeps what is found, best match first, and picking a row does what pressing its card does.
+  const affiliationIndex = useMemo(() => affiliationEntries(facets?.affiliations ?? [], lang), [facets, lang])
+  const themeIndex = useMemo(() => themePackEntries(facets?.themes ?? [], lang), [facets, lang])
+  const affiliations = pickerFound(affiliationIndex, facets?.affiliations ?? [], item => item.key, query)
+  const themes = pickerFound(themeIndex, facets?.themes ?? [], theme => String(theme.id), query)
   const sinnerName = (id: string) => rootT(`sinner.${id}` as Parameters<typeof rootT>[0])
 
   let body: ReactNode = null
   if (kind === 'affiliation') body = (
     <>
-      <NameSearch value={query} onChange={setQuery} placeholder={t('searchAffiliation')} />
+      <NameSearch value={query} onChange={setQuery} label={t('searchAffiliation')}
+        groups={[pickGroup(t('affiliation'), affiliations.top, item => onToggle(item.key), item => t('postCount', { count: item.count }))]} />
       <div className={filterStyles.options}>
-        {(facets?.affiliations ?? []).filter(item => match(item.key, getLocalizedAffiliation(item.key, lang))).map(item => (
+        {affiliations.list.map(item => (
           <button key={item.key} type="button" aria-pressed={selectedSet.has(item.key)} onClick={() => onToggle(item.key)} className={filterStyles.option} title={getLocalizedAffiliation(item.key, lang)}>
             {/* The icon's place is kept for the few affiliations without one, so every name starts on the same line. */}
             <i>{getAffiliationIconUrl(item.key) && <Image src={getAffiliationIconUrl(item.key)!} alt="" width={28} height={28} />}</i>
@@ -123,9 +126,10 @@ export function FacetPickerModal({ kind, facets, selected, onToggle, onClose }: 
   )
   if (kind === 'theme') body = (
     <>
-      <NameSearch value={query} onChange={setQuery} placeholder={t('searchTheme')} />
+      <NameSearch value={query} onChange={setQuery} label={t('searchTheme')}
+        groups={[pickGroup(t('theme'), themes.top, theme => onToggle(String(theme.id)), theme => t('postCount', { count: theme.count }), true)]} />
       <div className="grid grid-cols-3 gap-x-3 gap-y-2 sm:grid-cols-5 md:grid-cols-7">
-        {(facets?.themes ?? []).filter(theme => match(theme.name, theme.name_en, theme.name_jp)).map(theme => (
+        {themes.list.map(theme => (
           <div key={theme.id} className="min-w-0">
             <ThemePackCard theme={theme} sizes="7rem" isSelected={selectedSet.has(String(theme.id))} onClick={() => onToggle(String(theme.id))} />
             <Count value={theme.count} />

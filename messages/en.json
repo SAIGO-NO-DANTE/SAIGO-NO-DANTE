@@ -2460,7 +2460,6 @@
     "coins": "Coins",
     "egoGrade": "E.G.O Grade",
     "keyword": "Keywords",
-    "keywordPlaceholder": "Type a keyword, then Enter...",
     "keywordSearchLabel": "Search keywords",
     "keywordRemove": "Remove {kw} filter",
     "added": "Added",

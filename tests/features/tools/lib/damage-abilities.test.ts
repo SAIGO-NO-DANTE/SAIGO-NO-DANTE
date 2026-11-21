@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { type SavedModifier } from '@/features/tools/lib/damage-types'
 import { coinDamage, coinModifiers, parseSavedModifiers } from '@/features/tools/lib/damage'
 import { abilityPower, appliesTo, effectSummary, readAbilities, readGiftModifiers } from '@/features/tools/lib/damage-abilities'
-import { buildDamageSources, keywordModifier, suggestDamageSources, type GiftSourceRow } from '@/features/tools/lib/damage-sources'
+import { buildDamageSources, keywordModifier, type GiftSourceRow } from '@/features/tools/lib/damage-sources'
+import { suggestDamageSources } from '@/features/tools/lib/damage-suggest'
 
 // Rows as the game's buff data writes them (keyword_meta.abilities).
 const VULNERABLE = [{ ability: 'TakeAtkDamageMultiplierByStack', value: 0.1 }]

@@ -88,12 +88,19 @@ export default function EGOBrowserClient({ egos, sinners }: Props) {
         >
           <FilterSidebar
             activeCount={activeCount}
+            // The keyword field sits with the name search: both suggestion panels must reach over the cards, so neither may be in the scrolling filters.
             search={(
-              <div>
-                <div className={filterStyles.label}>
-                  {t('nameSearch')}
+              <div className="flex flex-col gap-4">
+                <div>
+                  <div className={filterStyles.label}>
+                    {t('nameSearch')}
+                  </div>
+                  <SearchBox value={nameQuery} onChange={setNameQuery} label={t('egoPlaceholder')} clearLabel={tGlobal('clear')} groups={groups} />
                 </div>
-                <SearchBox value={nameQuery} onChange={setNameQuery} label={t('egoPlaceholder')} clearLabel={tGlobal('clear')} groups={groups} />
+                <KeywordFilter
+                  selected={filters.keywords}
+                  onToggle={v => toggle('keywords', v)}
+                />
               </div>
             )}
           >
@@ -112,11 +119,6 @@ export default function EGOBrowserClient({ egos, sinners }: Props) {
             <SinFilter
               selected={filters.sins}
               onToggle={v => toggle('sins', v)}
-            />
-            <div style={{ borderTop: '1px solid #2e2417' }} />
-            <KeywordFilter
-              selected={filters.keywords}
-              onToggle={v => toggle('keywords', v)}
             />
             <ActiveFilterChips activeCount={activeCount} onReset={resetAll} />
           </FilterSidebar>

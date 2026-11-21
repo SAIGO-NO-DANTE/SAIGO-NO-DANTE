@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildDamageSources, damageChanges, damageValues, findApplied, keywordModifier, mentionsDamage, stackEffect, suggestDamageSources, type DamageSources, type GiftSourceRow } from '@/features/tools/lib/damage-sources'
+import { buildDamageSources, damageChanges, damageValues, findApplied, keywordModifier, mentionsDamage, stackEffect, type DamageSources, type GiftSourceRow } from '@/features/tools/lib/damage-sources'
+import { suggestDamageSources } from '@/features/tools/lib/damage-suggest'
 
 // Effect texts as the game writes them (ego_gifts.effect_base, keyword_meta.description, 2026-10-04).
 const GIFTS = {
@@ -236,7 +237,14 @@ describe('damage sources', () => {
     expect(suggestDamageSources(sources, '미적')).toEqual([
       { key: 'g:9065', kind: 'gift', label: '미적 감각', modifier: { name: '미적 감각', value: 35, options: [35, 10], target: 'damage', gift: { id: '9065', level: 0, image_url: 'a.webp', grade: '4', keyword: 'Sinking' } } },
     ])
-    expect(suggestDamageSources(sources, 'ㅈ')).toEqual([])
+    // The shared engine: initials, a typo and spacing find a name too, best match first.
+    expect(suggestDamageSources(sources, 'ㅈ').map(row => row.label)).toEqual(['주시'])
+    expect(suggestDamageSources(sources, 'ㅊㅇ').map(row => row.label)).toEqual(['취약', '취약점 분석기', '참격 취약'])
+    expect(suggestDamageSources(sources, '취얀').map(row => row.label)).toEqual(['취약', '참격 취약', '취약점 분석기'])
+    expect(suggestDamageSources(sources, '취약점분석기').map(row => row.label)).toEqual(['취약점 분석기'])
+    // The list is the whole result: a name that only holds the typed letter stays in it, after the engine's matches.
+    expect(suggestDamageSources(sources, '약').map(row => row.label)).toEqual(['참격 취약', '취약', '취약점 분석기'])
+    expect(suggestDamageSources(sources, '취약', { group: 'target', limit: 1 }).map(row => row.label)).toEqual(['취약'])
     expect(suggestDamageSources(sources, '주')[0].modifier).toEqual({ name: '주시', keyword: '주시', value: 20, options: [20], target: 'damage', side: 'target' })
     // Inside one group: everything of the group before a name is typed, then only its matches.
     expect(suggestDamageSources(sources, '', { group: 'target' }).map(row => row.label)).toEqual(['참격 취약', '취약', '주시'])

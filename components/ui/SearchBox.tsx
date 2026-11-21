@@ -82,13 +82,28 @@ export default function SearchBox({ value, onChange, label, clearLabel, groups, 
   const at = active < count ? active : -1
 
   // The panel is wider than a narrow field: when it would run off the right edge it hangs from the field's right end
-  // instead (as far as the left edge allows).
+  // instead (as far as the left edge allows). The edges are the viewport's or those of an ancestor that clips (a modal's
+  // scroll area, a scrolling column): the panel is never wider than that, and inside one it ends above its bottom edge
+  // and scrolls its own rows instead of being cut.
   useLayoutEffect(() => {
     const el = panel.current, field = el?.parentElement?.getBoundingClientRect()
     if (!el || !field) return
-    const over = field.left + el.offsetWidth - (document.documentElement.clientWidth - 8)
-    el.style.transform = over > 0 ? `translateX(${-Math.max(over, Math.min(el.offsetWidth - field.width, field.left - 8))}px)` : ''
-  }, [shown])
+    let left = 8, right = document.documentElement.clientWidth - 8, bottom = Infinity
+    for (let node = el.parentElement?.parentElement; node && node !== document.body; node = node.parentElement) {
+      if (getComputedStyle(node).overflowX === 'visible') continue
+      const box = node.getBoundingClientRect()
+      left = Math.max(left, box.left)
+      right = Math.min(right, box.right)
+      bottom = Math.min(bottom, box.bottom)
+    }
+    el.style.maxWidth = `${right - left}px`
+    el.style.maxHeight = ''
+    const top = el.getBoundingClientRect().top
+    // Three rows stay reachable even in a short area; the area then scrolls for the rest.
+    if (top + el.offsetHeight > bottom - 8) el.style.maxHeight = `${Math.max(120, bottom - 8 - top)}px`
+    const over = field.left + el.offsetWidth - right
+    el.style.transform = over > 0 ? `translateX(${-Math.max(over, Math.min(el.offsetWidth - field.width, field.left - left))}px)` : ''
+  }, [shown, count])
   // Only a key move scrolls the row into view; the pointer resting on a half-visible row must not.
   useEffect(() => {
     if (byKey.current && at >= 0) document.getElementById(`${id}-${at}`)?.scrollIntoView({ block: 'nearest' })

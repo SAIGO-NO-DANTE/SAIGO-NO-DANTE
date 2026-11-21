@@ -110,6 +110,9 @@ export default function FloorTab({ state, dispatch, themes, gifts, recipes, gift
   )
 
   const kwContext = useKeywordData()
+  // Stable: the picker indexes this text once per theme list.
+  const themeSearchText = useCallback((theme: (typeof themes)[number]) => [theme.name, theme.name_en, theme.name_jp, ...[...(theme.ego_gift_ids ?? []), ...(theme.specific_ego_gift_ids ?? [])]
+    .flatMap(id => { const gift = giftMap.get(id); return gift ? [gift.name, gift.name_en, gift.name_jp] : [] })].join(' '), [giftMap])
   const localizedGift = useCallback((gift: GiftData): GiftData => ({
     ...gift,
     name: getLocalizedName({ name_kr: gift.name, name_en: gift.name_en, name_jp: gift.name_jp }, locale),
@@ -485,8 +488,7 @@ export default function FloorTab({ state, dispatch, themes, gifts, recipes, gift
           searchLabel={t('themeSearch')}
           noResultsLabel={t('themeSearchEmpty')}
           countLabel={count => t('themeResultCount', { count })}
-          searchText={theme => [theme.name, theme.name_en, theme.name_jp, ...[...(theme.ego_gift_ids ?? []), ...(theme.specific_ego_gift_ids ?? [])]
-            .flatMap(id => { const gift = giftMap.get(id); return gift ? [gift.name, gift.name_en, gift.name_jp] : [] })].join(' ')}
+          searchText={themeSearchText}
           themes={pickerThemes}
           suggested={floorSuggestions?.themes}
           suggestionsLoading={floorSuggestionsLoading}

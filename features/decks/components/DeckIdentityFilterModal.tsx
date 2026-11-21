@@ -9,8 +9,12 @@ import { getSinnerLogoUrl } from '@/lib/utils/images'
 import BaseModal from '@/components/ui/BaseModal'
 import CharacterPickerFilters from '@/components/ui/CharacterPickerFilters'
 import IdentityFrameCard from '@/components/cards/IdentityFrameCard'
+import { pickGroup } from '@/components/ui/SearchRows'
 import { filterStyles } from '@/components/board/FilterControls'
 import { compareReleaseDate } from '@/lib/utils/release-order'
+import { identityIcon, pickerEntries, pickerFound } from '@/lib/search/picker-search'
+import { translations } from '@/lib/i18n/translations'
+import type { SupportedLang } from '@/lib/i18n/types'
 import '@/components/ui/character-picker.css'
 
 export type DeckFilterSinner = {
@@ -22,6 +26,8 @@ export type DeckFilterSinner = {
 export type DeckFilterIdentity = Identity & {
   sinner?: DeckFilterSinner | null
 }
+
+const nameOf = (identity: DeckFilterIdentity, locale: string) => (locale === 'en' ? identity.name_en : locale === 'ja' ? identity.name_jp : null) || identity.name_kr
 
 /**
  * The identity filter's picker of the deck and plan boards, built like the planner's identity picker: name search, grade
@@ -48,14 +54,15 @@ export default function DeckIdentityFilterModal({ open, sinnerId, sinners, ident
   const [query, setQuery] = useState(''), [grade, setGrade] = useState('')
   useEffect(() => { if (open) { setQuery(''); setGrade('') } }, [open])
   const sinnerName = (id: string) => rootT(`sinner.${id}` as Parameters<typeof rootT>[0])
-  const nameOf = (identity: DeckFilterIdentity) => (locale === 'en' ? identity.name_en : locale === 'ja' ? identity.name_jp : null) || identity.name_kr
-  const shown = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase()
-    return identities
-      .filter(identity => (!sinnerId || identity.sinner_id === sinnerId) && (!grade || String(identity.rarity) === grade)
-        && [identity.name_kr, identity.name_en, identity.name_jp].some(name => name?.toLocaleLowerCase().includes(needle)))
-      .sort(compareReleaseDate)
-  }, [identities, sinnerId, grade, query])
+  const entries = useMemo(() => pickerEntries('identity', identities, locale as SupportedLang, identity => ({
+    id: identity.id, label: nameOf(identity, locale), names: { ko: identity.name_kr, en: identity.name_en, ja: identity.name_jp }, sinner: identity.sinner_id, icon: identityIcon(identity),
+  })), [identities, locale])
+  // Newest first; with a query the best match first.
+  const { list: shown, top } = useMemo(() => pickerFound(
+    entries, identities.filter(identity => (!sinnerId || identity.sinner_id === sinnerId) && (!grade || String(identity.rarity) === grade)).sort(compareReleaseDate), identity => identity.id, query,
+  ), [entries, identities, sinnerId, grade, query])
+  // What pressing the card does: a pressed card joins the filter and closes the window, the chosen one comes off.
+  const pick = (identityId: string) => { onToggleIdentity(identityId); if (!selectedIdentityIds.has(identityId)) onClose() }
   // The picks in view: this sinner's, or all of them when every sinner is shown.
   const picked = useMemo(() => identities.filter(identity => selectedIdentityIds.has(identity.id) && (!sinnerId || identity.sinner_id === sinnerId)).map(identity => identity.id),
     [identities, selectedIdentityIds, sinnerId])
@@ -78,7 +85,7 @@ export default function DeckIdentityFilterModal({ open, sinnerId, sinners, ident
           <button type="button" onClick={onClose} aria-label={t('close')}><X size={20} aria-hidden="true" /></button>
         </div>
         <div className="character-picker-layout">
-          <CharacterPickerFilters query={query} onQuery={setQuery} grade={grade} onGrade={setGrade} count={shown.length}
+          <CharacterPickerFilters query={query} onQuery={setQuery} groups={[pickGroup(translations['sinners.identities'][locale as SupportedLang], top, identity => pick(identity.id))]} grade={grade} onGrade={setGrade} count={shown.length}
             grades={[3, 2, 1].map(n => ({ value: String(n), label: '0'.repeat(n) }))}
             sinner={sinnerId} onSinner={onSinnerChange} sinners={sinners.map(sinner => ({ id: sinner.id, name: sinnerName(sinner.id) }))}
             onReset={reset} canReset={Boolean(query || grade || picked.length)} />
@@ -87,12 +94,12 @@ export default function DeckIdentityFilterModal({ open, sinnerId, sinners, ident
               <ul className={filterStyles.pickerGrid}>
                 {shown.map(identity => {
                   const selected = selectedIdentityIds.has(identity.id)
-                  const name = nameOf(identity)
+                  const name = nameOf(identity, locale)
                   // With every sinner listed, identities of different sinners share names ("W사 3등급 정리 요원"): the sinner tells them apart.
                   const spoken = sinnerId ? name : `${sinnerName(identity.sinner_id)} ${name}`
                   return (
                     <li key={identity.id}>
-                      <button type="button" aria-pressed={selected} aria-label={t(selected ? 'remove' : 'add', { identity: spoken })} onClick={() => { onToggleIdentity(identity.id); if (!selected) onClose() }}>
+                      <button type="button" aria-pressed={selected} aria-label={t(selected ? 'remove' : 'add', { identity: spoken })} onClick={() => pick(identity.id)}>
                         <IdentityFrameCard identity={identity} name={name} selected={selected} sizes="(max-width: 40rem) 30vw, 10rem" />
                       </button>
                     </li>

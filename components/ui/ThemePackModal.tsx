@@ -9,8 +9,14 @@ import SuggestionRibbon from '@/components/ui/SuggestionRibbon'
 import { SkeletonPage } from '@/components/ui/Skeleton'
 import { SuggestionTitleSkeleton, ThemeTileSkeleton } from '@/components/ui/SuggestionSkeleton'
 import { filterStyles } from '@/components/board/FilterControls'
-import { Search, X } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { X } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
+import { useMemo, useState, type ReactNode } from 'react'
+import SearchBox from '@/components/ui/SearchBox'
+import { pickGroup } from '@/components/ui/SearchRows'
+import { pickerFound } from '@/lib/search/picker-search'
+import { themePackEntries } from '@/lib/search/theme-pack-entries'
+import { translations } from '@/lib/i18n/translations'
 import type { SupportedLang } from '@/lib/i18n/types'
 
 interface ThemePackModalShellProps {
@@ -232,6 +238,8 @@ interface ThemePackPickerTheme {
   image_url?: string | null
   ego_gift_ids?: number[] | null
   specific_ego_gift_ids?: number[] | null
+  /** 'hard' and 'extreme' are named at the right edge of the pack's suggestion row. */
+  difficulty?: string | null
 }
 
 interface ThemePackPickerModalProps<TTheme extends ThemePackPickerTheme> {
@@ -254,7 +262,7 @@ interface ThemePackPickerModalProps<TTheme extends ThemePackPickerTheme> {
   doneLabel?: string
   lang?: SupportedLang
   meta?: ReactNode
-  /** Text the search matches; defaults to the pack's names. */
+  /** More text the search finds a pack by (the names of its gifts), besides its names. */
   searchText?: (theme: TTheme) => string
   /** Packs to list first under the "추천" ribbon, most picked first, with how many plans picked each (the number on the card's corner). Hidden while searching. */
   suggested?: { id: number | string; count: number }[] | null
@@ -281,13 +289,18 @@ export function ThemePackPickerModal<TTheme extends ThemePackPickerTheme>({
   doneLabel,
   lang,
   meta,
-  searchText = theme => [theme.name, theme.name_en, theme.name_jp].join(' '),
+  searchText,
   suggested,
   suggestionsLoading = false,
 }: ThemePackPickerModalProps<TTheme>) {
   const [query, setQuery] = useState('')
-  const needle = query.trim().toLocaleLowerCase()
-  const shown = needle ? themes.filter(theme => searchText(theme).toLocaleLowerCase().includes(needle)) : themes
+  const locale = useLocale() as SupportedLang
+  const clearLabel = useTranslations('globalSearch')('clear')
+  const needle = query.trim()
+  const entries = useMemo(() => themePackEntries(themes, lang ?? locale, searchText), [themes, lang, locale, searchText])
+  // The grid keeps the packs found, best match first; a pack found only by the text of its gifts is no name to suggest.
+  const { list: shown, top } = pickerFound(entries, themes, theme => String(theme.id), query, (_, hit) => hit.kind !== 'text')
+  const hard = (theme: TTheme) => theme.difficulty === 'hard' || theme.difficulty === 'extreme'
   const themeById = new Map(themes.map(theme => [String(theme.id), theme]))
   const picks = needle ? [] : (suggested ?? []).flatMap(row => themeById.has(String(row.id)) ? [{ theme: themeById.get(String(row.id))!, count: row.count }] : []).slice(0, SUGGESTED_LIMIT)
   const holdPicks = suggestionsLoading && !needle
@@ -326,12 +339,9 @@ export function ThemePackPickerModal<TTheme extends ThemePackPickerTheme>({
         </div>
         {themes.length > 0 && (
           <div className="flex shrink-0 items-center gap-3 px-5 pt-4 max-sm:px-3">
-            <label className="relative min-w-0 flex-1 sm:max-w-[22rem]">
-              <span className="sr-only">{searchLabel}</span>
-              <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-              <input type="text" enterKeyHint="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={searchLabel}
-                className="min-h-10 w-full rounded-md border border-[#2e2417] bg-[var(--bg-deep)] pl-9 pr-3 text-[0.9375rem] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:border-[var(--gold)] focus-visible:outline-none" />
-            </label>
+            <SearchBox value={query} onChange={setQuery} label={searchLabel} clearLabel={clearLabel} className="min-w-0 flex-1 sm:max-w-[22rem]"
+              groups={[pickGroup(translations['mirrorDungeon.tab.themes'][lang ?? locale], top, onSelectTheme,
+                theme => hard(theme) ? <span style={{ color: 'var(--error-text)' }}>{translations[`mirrorDungeon.tier.${theme.difficulty as 'hard' | 'extreme'}`][lang ?? locale]}</span> : undefined, true)]} />
             <span className="shrink-0 text-sm tabular-nums text-[#9c8b73]">{countLabel(shown.length)}</span>
           </div>
         )}
