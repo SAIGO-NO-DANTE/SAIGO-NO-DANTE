@@ -2,8 +2,9 @@
 
 import { useLocale, useTranslations } from 'next-intl'
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
-import { Play, Search, X, RotateCcw, ChevronDown } from 'lucide-react'
-import GiftArtwork from '@/components/ui/GiftArtwork'
+import { Play, X, RotateCcw, ChevronDown } from 'lucide-react'
+import SearchBox from '@/components/ui/SearchBox'
+import { pickGroup } from '@/components/ui/SearchRows'
 import RunCaptureGuide from './RunCaptureGuide'
 import { Link } from '@/lib/i18n/navigation'
 import { DIFFICULTY_CONFIG, type Difficulty } from '@/lib/planner/types'
@@ -11,6 +12,9 @@ import type { RunState, RunAction } from '@/features/planner/lib/run-types'
 import type { GiftData, IdentityData, SinnerData, EgoData } from '@/lib/planner/types'
 import { loadRunDraft } from '@/features/planner/lib/encoder'
 import { getLocalizedName } from '@/lib/i18n/localize'
+import { pickerFound } from '@/lib/search/picker-search'
+import { translations } from '@/lib/i18n/translations'
+import { giftEntries } from '@/features/planner/lib/gift-search'
 import type { SupportedLang } from '@/lib/i18n/types'
 
 interface Props {
@@ -33,16 +37,16 @@ const fieldHeading = 'mb-2 text-sm font-bold text-[var(--text-primary)]'
 
 export default function RunSetup({ state, dispatch, gifts, giftMap, recognition, recognitionSummary }: Props) {
   const t = useTranslations('planner.run')
+  const clearLabel = useTranslations('globalSearch')('clear')
   const locale = useLocale() as SupportedLang
   const giftName = (gift: GiftData) => getLocalizedName({ name_kr: gift.name, name_en: gift.name_en, name_jp: gift.name_jp }, locale)
   const [giftSearch, setGiftSearch] = useState('')
   const [draft, setDraft] = useState<ReturnType<typeof loadRunDraft>>(null)
   useEffect(() => { setDraft(loadRunDraft()) }, [])
 
-  const searchResults = useMemo(() => {
-    if (!giftSearch.trim()) return []
-    return gifts.filter(g => giftName(g).toLocaleLowerCase().includes(giftSearch.trim().toLocaleLowerCase())).slice(0, 15)
-  }, [giftSearch, gifts, locale])
+  const entries = useMemo(() => giftEntries(gifts, { locale }), [gifts, locale])
+  // A gift found only by its effect is no name to suggest.
+  const { top } = pickerFound(entries, gifts, gift => gift.id, giftSearch, (_, hit) => hit.kind !== 'text')
 
   const inventoryGifts = useMemo(() =>
     state.giftInventory.map(id => giftMap.get(Number(id))).filter(Boolean) as GiftData[]
@@ -103,23 +107,8 @@ export default function RunSetup({ state, dispatch, gifts, giftMap, recognition,
           {state.startFloor > 1 && (
             <div>
               <h3 className={fieldHeading}>{t('startingGifts')}</h3>
-              <div className="relative">
-                <Search aria-hidden="true" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                <input type="text" aria-label={t('searchGifts')} value={giftSearch} onChange={e => setGiftSearch(e.target.value)} placeholder={t('searchGifts')}
-                  className={`w-full rounded-md border border-[var(--border)] bg-[var(--bg-deep)] py-2 pl-9 pr-3 text-sm text-[var(--text-primary)] ${focus}`} />
-              </div>
-              {searchResults.length > 0 && (
-                <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg-deep)]">
-                  {searchResults.map(gift => (
-                    <button key={gift.id} type="button" onClick={() => { dispatch({ type: 'ACQUIRE_GIFT', giftId: String(gift.game_id) }); setGiftSearch('') }}
-                      className={`flex min-h-11 w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] ${focus}`}>
-                      <span className="w-8 shrink-0"><GiftArtwork gift={gift} displayName={giftName(gift)} sizes="32px" /></span>
-                      {giftName(gift)}
-                      {gift.keyword && <span className="text-[var(--text-muted)]">({gift.keyword})</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <SearchBox value={giftSearch} onChange={setGiftSearch} label={t('searchGifts')} clearLabel={clearLabel}
+                groups={[pickGroup(translations['mirrorDungeon.tab.gifts'][locale], top, gift => { dispatch({ type: 'ACQUIRE_GIFT', giftId: String(gift.game_id) }); setGiftSearch('') })]} />
               {inventoryGifts.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
                   {inventoryGifts.map((gift, i) => (

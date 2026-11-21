@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { X } from 'lucide-react'
 import BaseModal from '@/components/ui/BaseModal'
@@ -9,6 +9,8 @@ import { SuggestionGroupSkeleton } from '@/components/ui/SuggestionSkeleton'
 import SuggestionNote, { useArchetypeLabel } from './SuggestionNote'
 import type { Archetype, Suggestion } from '@/lib/community/suggestion-types'
 import CharacterPickerFilters from '@/components/ui/CharacterPickerFilters'
+import { pickGroup } from '@/components/ui/SearchRows'
+import { pickerEntries, pickerFound } from '@/lib/search/picker-search'
 import EgoDisplayCard from '@/components/cards/EgoDisplayCard'
 import { localizeEgoName } from '@/lib/decks/localize'
 import { GRADE_COLORS } from '@/lib/constants/game'
@@ -92,7 +94,11 @@ export function PlannerEgoSelectModal({
   const compactNameStyle = getCompactNameStyle(locale)
   const [query, setQuery] = useState(''), [gradeFilter, setGradeFilter] = useState('')
   useEffect(() => { setQuery(''); setGradeFilter('') }, [open, sinner?.id])
-  const filtered = egos.filter(ego => (!gradeFilter || ego.grade === gradeFilter) && [ego.name_kr, ego.name_en, ego.name_jp].some(name => name?.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())))
+  const entries = useMemo(() => pickerEntries('ego', egos, locale, ego => ({
+    id: ego.id, label: localizeEgoName(ego, locale), names: { ko: ego.name_kr, en: ego.name_en, ja: ego.name_jp }, icon: ego.image_url,
+  })), [egos, locale])
+  // The order they came in; with a query the best match first.
+  const { list: filtered, top } = pickerFound(entries, egos.filter(ego => !gradeFilter || ego.grade === gradeFilter), ego => ego.id, query)
   const egoById = new Map(filtered.map(ego => [ego.id, ego]))
   const suggestionOf = new Map((suggestions ?? []).map(suggestion => [suggestion.id, suggestion]))
   const holdSuggested = suggestionsLoading && !query.trim() && !gradeFilter
@@ -131,7 +137,7 @@ export function PlannerEgoSelectModal({
           </div>
 
           <div className="character-picker-layout">
-          <CharacterPickerFilters query={query} onQuery={setQuery} grade={gradeFilter} onGrade={setGradeFilter} grades={PLANNER_EGO_GRADE_ORDER.map(value => ({ value, label: value }))} count={filtered.length} />
+          <CharacterPickerFilters query={query} onQuery={setQuery} grade={gradeFilter} onGrade={setGradeFilter} grades={PLANNER_EGO_GRADE_ORDER.map(value => ({ value, label: value }))} count={filtered.length} groups={[pickGroup('E.G.O', top, onSelect)]} />
           <div className="planner-deck-select-modal__results flex flex-col gap-5 p-5">
             {holdSuggested && (
               <SuggestionGroupSkeleton shape="ego" count={SUGGESTED_LIMIT} titleClassName="mb-2" tilesClassName="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" archetype />

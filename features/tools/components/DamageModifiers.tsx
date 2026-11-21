@@ -22,7 +22,8 @@ import { type ModifierTarget, type SavedModifier } from '@/features/tools/lib/da
 import { clampModifierValue, coinChoices, MAX_MODIFIER_NAME, MAX_MODIFIER_OPTIONS, MAX_MODIFIERS, MAX_MODIFIER_VALUE, MODIFIER_TARGETS } from '@/features/tools/lib/damage'
 import { type AbilityEffect } from '@/features/tools/lib/damage-types'
 import { effectSummary } from '@/features/tools/lib/damage-abilities'
-import { DEFAULT_MAX_STACKS, findApplied, MAX_STACKS, suggestDamageSources, type DamageSources, type DamageSuggestion, type SourceGroup, type StackEffect } from '@/features/tools/lib/damage-sources'
+import { suggestDamageSources } from '@/features/tools/lib/damage-suggest'
+import { DEFAULT_MAX_STACKS, findApplied, MAX_STACKS, type DamageSources, type DamageSuggestion, type SourceGroup, type StackEffect } from '@/features/tools/lib/damage-sources'
 import NumberInput from './NumberInput'
 import styles from './DamageCalculator.module.css'
 
@@ -78,7 +79,7 @@ export default function DamageModifiers({ modifiers, setModifiers, coinCount }: 
     return () => cancelAnimationFrame(frame)
   }, [adding])
 
-  const candidates = data && adding && adding !== 'gift' ? suggestDamageSources(data, query, { group: adding }) : []
+  const candidates = useMemo(() => data && adding && adding !== 'gift' ? suggestDamageSources(data, query, { group: adding }) : [], [data, adding, query])
   // The gift picker is the planner's: it takes the gifts in the shape of the planner's own list.
   const giftChoices = useMemo<GiftData[]>(() => (data?.gifts ?? []).map(gift => ({
     id: gift.id, game_id: Number(gift.id), name: gift.name, name_en: locale === 'en' ? gift.label : null, name_jp: locale === 'ja' ? gift.label : null,

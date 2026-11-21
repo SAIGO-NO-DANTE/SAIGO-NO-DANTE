@@ -14,10 +14,9 @@
 }
 .note-picker-empty{padding:3rem 1rem;text-align:center;color:var(--text-muted);font-size:.875rem;line-height:1.6}
 /* Character catalog pickers: compact tools beside an independent artwork shelf. */
-.character-picker-filters{padding:.75rem 1rem;border-bottom:1px solid var(--border);background:var(--bg-deep);flex-shrink:0}
-.character-picker-search{display:flex;align-items:center;gap:.5rem;padding:.45rem .65rem;border:1px solid var(--border);border-radius:.35rem;color:var(--text-secondary);background:var(--bg-card)}
-.character-picker-search:focus-within{border-color:var(--gold)}
-.character-picker-search input{width:100%;min-width:0;background:none;outline:none;color:var(--text-primary);font-size:.875rem;min-height:1.5rem}
+.character-picker-filters{display:flex;flex-direction:column;padding:.75rem 1rem;border-bottom:1px solid var(--border);background:var(--bg-deep);flex-shrink:0}
+/* Only the filters under the search field scroll: the field's suggestion panel must not be clipped by them. */
+.character-picker-filters-body{min-height:0;overflow-y:auto;scrollbar-gutter:stable}
 .character-picker-grades{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.6rem}
 .character-picker-sinners{display:grid;gap:.2rem;margin-top:.75rem}
 .character-picker-sinners button,.character-picker-grades button{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:2.25rem;padding:.3rem .55rem;border:1px solid transparent;border-radius:.3rem;font-size:.8125rem;color:var(--text-secondary);background:transparent}
@@ -35,7 +34,7 @@
 .note-character-picker .note-picker-header{padding:.75rem 1rem;margin:0;border-bottom:1px solid var(--border);flex-shrink:0}
 .note-character-picker .note-picker-header h2{font-family:var(--font-heading);font-size:1.25rem}
 .character-picker-layout{display:grid;overflow:hidden;grid-template-columns:11rem minmax(0,1fr);min-height:0;flex:1}
-.character-picker-layout>.character-picker-filters{padding:.75rem;border-right:1px solid var(--border);border-bottom:0;overflow-y: auto; scrollbar-gutter: stable}
+.character-picker-layout>.character-picker-filters{min-height:0;padding:.75rem;border-right:1px solid var(--border);border-bottom:0}
 .note-character-picker .note-picker-results{padding:1rem;min-height:0}
 .note-character-picker section+section{margin-top:1.5rem}
 .note-character-picker section h3{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;font-family:var(--font-heading);font-size:1rem;color:var(--text-primary)}
@@ -52,7 +51,6 @@
 }
 @media(max-width:40rem){
   .character-picker-filters{padding:.5rem .75rem}
-  .character-picker-search input{font-size:1rem}
   .character-picker-filter-toggle{display:inline-flex;align-items:center;gap:.4rem;min-height:2rem;font-size:.75rem;color:var(--text-secondary)}
   .character-picker-sinners{display:none;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:.3rem}
   .character-picker-sinners[data-expanded=true]{display:grid}
@@ -74,5 +72,3 @@
   .character-picker-ego-card{transition:none}
   .character-picker-ego-card:hover{transform:none}
 }
-.character-picker-search input{height:1.5rem;min-height:0;margin:0;padding:0!important;border:0;box-shadow:none;line-height:1.5rem}
-.character-picker-search{min-height:2.25rem;padding:.35rem .6rem;font-size:.875rem}

@@ -1,16 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import useSWR from 'swr'
 import { Check, Trash2 } from 'lucide-react'
 import BaseModal from '@/components/ui/BaseModal'
 import CharacterPickerFilters from '@/components/ui/CharacterPickerFilters'
+import { pickGroup } from '@/components/ui/SearchRows'
+import { identityIcon, pickerEntries, pickerFound } from '@/lib/search/picker-search'
+import { translations } from '@/lib/i18n/translations'
 import IdentityFrameCard from '@/components/cards/IdentityFrameCard'
 import { fetchNoteAssets } from '@/features/notes/components/NoteBlockViewer'
 import { SINNER_SLUGS } from '@/lib/constants/game'
 import { getEgoGradeBannerUrl, getSinnerLogoUrl } from '@/lib/utils/images'
-import { assetName } from '@/features/notes'
+import { assetName, type NoteAssetData } from '@/features/notes'
 import { compareReleaseDate } from '@/lib/utils/release-order'
 import type { SupportedLang } from '@/lib/i18n/types'
 import SupportStrips, { EGO_GRADES, type EgoGrade, type SupportSlot } from './SupportStrips'
@@ -34,10 +37,15 @@ export default function SupportSlotPicker({ index, value, onChange, onClose, tit
   const setSlot = (next: SupportSlot | null) => { setLocal(next); onChange(next) }
   const identities = useSWR('/api/notes/assets?kind=identity&catalog=1', fetchNoteAssets, { revalidateOnFocus: false })
   const egos = useSWR('/api/notes/assets?kind=ego&catalog=1', fetchNoteAssets, { revalidateOnFocus: false })
-  const needle = query.trim().toLocaleLowerCase()
-  const list = (identities.data ?? []).filter(asset => asset.identity && (!sinner || asset.identity.sinner_id === sinner) && (!grade || String(asset.identity.rarity) === grade)
-    && [asset.name, asset.name_en, asset.name_jp].some(name => name?.toLocaleLowerCase().includes(needle)))
-    .sort((a, b) => compareReleaseDate(a.identity ?? a, b.identity ?? b))
+  const catalog = useMemo(() => (identities.data ?? []).filter(asset => asset.identity), [identities.data])
+  const entries = useMemo(() => pickerEntries('identity', catalog, lang, asset => ({
+    id: asset.id, label: assetName(asset, lang), names: { ko: asset.name, en: asset.name_en, ja: asset.name_jp }, sinner: asset.identity!.sinner_id, icon: identityIcon(asset.identity!),
+  })), [catalog, lang])
+  // Newest first; with a query the best match first.
+  const { list, top } = useMemo(() => pickerFound(
+    entries, catalog.filter(asset => (!sinner || asset.identity!.sinner_id === sinner) && (!grade || String(asset.identity!.rarity) === grade)).sort((a, b) => compareReleaseDate(a.identity!, b.identity!)), asset => asset.id, query,
+  ), [entries, catalog, sinner, grade, query])
+  const choose = (asset: NoteAssetData) => setSlot({ identityId: asset.id, identity: asset.identity!, name: assetName(asset, lang), egos: slot?.identity.sinner_id === asset.identity!.sinner_id ? slot.egos : {} })
   return <BaseModal open onClose={onClose} title={title} maxWidth="74rem" padding="0">
     <div className={`note-picker note-character-picker ${styles.picker}`}>
       <header className="note-picker-header">
@@ -48,7 +56,7 @@ export default function SupportSlotPicker({ index, value, onChange, onClose, tit
         </div>
       </header>
       <div className={`character-picker-layout ${identityOnly ? '' : styles.withSide}`}>
-        <CharacterPickerFilters query={query} onQuery={setQuery} grade={grade} onGrade={setGrade} grades={RARITIES} count={list.length}
+        <CharacterPickerFilters query={query} onQuery={setQuery} grade={grade} onGrade={setGrade} groups={[pickGroup(translations['sinners.identities'][lang], top, choose)]} grades={RARITIES} count={list.length}
           sinner={sinner} onSinner={setSinner} sinners={SINNER_SLUGS.map(id => ({ id, name: t(id) }))} />
         <div className={`note-picker-results ${styles.results}`}>
           {SINNER_SLUGS.map(id => {
@@ -58,8 +66,7 @@ export default function SupportSlotPicker({ index, value, onChange, onClose, tit
               {/* eslint-disable-next-line @next/next/no-img-element -- small fixed-size game icon */}
               <h3><img src={getSinnerLogoUrl(id)} alt="" width={28} height={28} />{t(id)}<small>{items.length}</small></h3>
               <div className={styles.identities}>
-                {items.map(asset => <button type="button" key={asset.id} aria-pressed={slot?.identityId === asset.id}
-                  onClick={() => setSlot({ identityId: asset.id, identity: asset.identity!, name: assetName(asset, lang), egos: slot?.identity.sinner_id === asset.identity!.sinner_id ? slot.egos : {} })}>
+                {items.map(asset => <button type="button" key={asset.id} aria-pressed={slot?.identityId === asset.id} onClick={() => choose(asset)}>
                   <IdentityFrameCard identity={asset.identity!} name={assetName(asset, lang)} selected={slot?.identityId === asset.id} sizes="7rem" />
                 </button>)}
               </div>

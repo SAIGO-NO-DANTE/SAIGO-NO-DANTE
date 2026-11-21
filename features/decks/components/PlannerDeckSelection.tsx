@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import IdentityFrameCard, { getFormationOverlay } from '@/components/cards/IdentityFrameCard'
 import type { EgoSlotItem, FormationStripSkill, SkillCountEdit } from '@/components/cards/EgoSlotRows'
 import FormationBoard from '@/features/decks/components/FormationBoard'
@@ -15,6 +15,9 @@ import SuggestionNote, { useArchetypeLabel } from './SuggestionNote'
 import { createLongPress } from '@/lib/utils/long-press'
 import type { Archetype, Suggestion } from '@/lib/community/suggestion-types'
 import CharacterPickerFilters from '@/components/ui/CharacterPickerFilters'
+import { pickGroup } from '@/components/ui/SearchRows'
+import { identityIcon, pickerEntries, pickerFound } from '@/lib/search/picker-search'
+import { translations } from '@/lib/i18n/translations'
 import { compareReleaseDate } from '@/lib/utils/release-order'
 import { localizeIdentityName } from '@/lib/decks/localize'
 import { LCB_IDS } from '@/lib/constants/game'
@@ -406,9 +409,11 @@ export function PlannerIdentitySelectModal({
   const [press] = useState(() => createLongPress<string>(setPicker, 450))
   useEffect(() => { setQuery(''); setGrade(''); setPicker(null) }, [open, sinner?.id])
   const needle = query.trim().toLocaleLowerCase()
-  const filtered = identities
-    .filter(identity => (!grade || String(identity.rarity) === grade) && [identity.name, identity.name_kr, identity.name_en, identity.name_jp].some(name => name?.toLocaleLowerCase().includes(needle)))
-    .sort(compareReleaseDate)
+  const entries = useMemo(() => pickerEntries('identity', identities, locale, identity => ({
+    id: identity.id, label: localizeIdentityName(identity, locale), names: { ko: identity.name_kr || identity.name, en: identity.name_en, ja: identity.name_jp }, icon: identityIcon(identity),
+  })), [identities, locale])
+  // Newest first; with a query the best match first.
+  const { list: filtered, top } = pickerFound(entries, identities.filter(identity => !grade || String(identity.rarity) === grade).sort(compareReleaseDate), identity => identity.id, query)
   const byId = new Map(filtered.map(identity => [identity.id, identity]))
   const suggestionOf = new Map((suggestions ?? []).map(suggestion => [suggestion.id, suggestion]))
   const holdSuggested = suggestionsLoading && !needle && !grade
@@ -443,7 +448,7 @@ export function PlannerIdentitySelectModal({
           </div>
 
           <div className="character-picker-layout">
-            <CharacterPickerFilters query={query} onQuery={setQuery} grade={grade} onGrade={setGrade} grades={[3, 2, 1].map(n => ({ value: String(n), label: '0'.repeat(n) }))} count={filtered.length} />
+            <CharacterPickerFilters query={query} onQuery={setQuery} grade={grade} onGrade={setGrade} grades={[3, 2, 1].map(n => ({ value: String(n), label: '0'.repeat(n) }))} count={filtered.length} groups={[pickGroup(translations['sinners.identities'][locale], top, identity => onSelect(identity, 4))]} />
             <div className="idpick__results">
               {holdSuggested && (
                 <SkeletonPage>

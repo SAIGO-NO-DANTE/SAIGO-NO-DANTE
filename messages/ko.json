@@ -2460,7 +2460,6 @@
     "coins": "코인 수",
     "egoGrade": "EGO 등급",
     "keyword": "키워드 필터",
-    "keywordPlaceholder": "키워드 입력 후 Enter...",
     "keywordSearchLabel": "키워드 필터 검색",
     "keywordRemove": "{kw} 필터 제거",
     "added": "추가됨",
