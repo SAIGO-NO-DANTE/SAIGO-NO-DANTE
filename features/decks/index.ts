@@ -3,7 +3,6 @@
 export { computeAttackTypeCounts, computeDeckResources, computeSinProduction, fieldedEntries } from '@/lib/decks/deck-analysis'
 export { insertDeckIdentities, isAwakenedUptie, normalizeUptie, rowsAtUptie, topUptieRows, topUptiePassives, topUptieSkills } from '@/lib/decks/deck-identity-uptie'
 export { contentTypeMessageKey, localizeDeckKeyword } from '@/lib/decks/decks-types'
-export type { SearchSuggestion } from '@/lib/decks/decks-types'
 export { buildEditMode } from './lib/edit-mode'
 export { QUERY_OPTIONS, parseCsvParam, serializeCsvParam, toDeckFilterIdentity } from './lib/filter-params'
 export type { IdentityNameEntry } from './lib/filter-params'

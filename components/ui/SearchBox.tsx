@@ -163,19 +163,21 @@ type Marks = [number, number][]
 /** The letters of the name the hit matched (initials, a typo's equal letters), to mark in the row. */
 export const nameMarks = ({ entry, reasons }: Hit): Marks => reasons.filter(reason => reason.text === entry.label).flatMap(reason => reason.ranges)
 
-function Thumb({ image, poster }: { image?: string | null; poster?: boolean }) {
+function Thumb({ image, poster, cover }: { image?: string | null; poster?: boolean; cover?: boolean }) {
   return (
     <span className={poster ? styles.poster : styles.thumb}>
-      {image && <QuietImage src={image} alt="" fill sizes={poster ? '24px' : '32px'} className={poster ? 'object-cover' : 'object-contain'} />}
+      {image && <QuietImage src={image} alt="" fill sizes={poster ? '24px' : '32px'} className={poster || cover ? 'object-cover' : 'object-contain'} />}
     </span>
   )
 }
 
 /** A suggestion row: picture, name (with the matched letters marked) and a small note at the right edge. */
-export function SuggestRow({ image, poster, name, marks = [], right, rightColor }: {
+export function SuggestRow({ image, poster, cover, name, marks = [], right, rightColor }: {
   image?: string | null
   /** A tall pack picture instead of the square slot */
   poster?: boolean
+  /** The picture is an illustration wider than the slot (an identity's art): fill the square instead of fitting inside it */
+  cover?: boolean
   name: string
   marks?: Marks
   right?: ReactNode
@@ -183,7 +185,7 @@ export function SuggestRow({ image, poster, name, marks = [], right, rightColor 
 }) {
   return (
     <>
-      <Thumb image={image} poster={poster} />
+      <Thumb image={image} poster={poster} cover={cover} />
       <span className={styles.name}>{markParts(name, marks).map((part, i) => part.marked ? <mark key={i}>{part.text}</mark> : part.text)}</span>
       {right != null && <small className={styles.right} style={{ color: rightColor }}>{right}</small>}
     </>

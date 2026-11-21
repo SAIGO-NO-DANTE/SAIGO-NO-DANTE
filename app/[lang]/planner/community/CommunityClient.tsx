@@ -7,9 +7,8 @@ import BoardBrowseLock from '@/features/community/components/BoardBrowseLock'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useQueryState, parseAsString } from 'nuqs'
 import { Link } from '@/lib/i18n/navigation'
-import Image from 'next/image'
 import { useSession } from 'next-auth/react'
-import { Link2, Search, User, X } from 'lucide-react'
+import { Link2 } from 'lucide-react'
 import { type PlanSummary } from '@/components/cards/PlanCard'
 import { DIFFICULTY_COLOR, DIFFICULTY_NAME } from '@/components/cards/PlanDifficulty'
 import { BoardResults, BrowseBar } from '@/features/community/components/Browse'
@@ -24,14 +23,14 @@ import { useBoardFacets } from '@/features/community/hooks/useBoardFacets'
 import { getActiveTerm } from '@/lib/utils/search'
 import { useLocale, useTranslations } from 'next-intl'
 import { QUERY_OPTIONS, localizeDeckKeyword, parseCsvParam, serializeCsvParam } from '@/features/decks'
-import { buildDeckSuggestions } from '@/features/decks/hooks/useIdentityFilterOptions'
+import { useBoardSuggest } from '@/features/decks/hooks/useBoardSuggest'
 import { getIdentityInfoUrl } from '@/lib/utils/images'
 import type { SupportedLang } from '@/lib/i18n'
 import Sheet from '@/components/ui/Sheet'
+import SearchBox from '@/components/ui/SearchBox'
 import { usePlanList } from '@/features/planner/hooks/usePlanList'
 import { usePlanCollectionFilter } from '@/features/planner/hooks/usePlanCollectionFilter'
 import { PLAN_FILTER_KEYWORDS, PLAN_LIST_PAGE_SIZE as PAGE_SIZE, buildPlanFilterIndexes, filterPlanIndexes, usePlanListFilters } from '@/features/planner/hooks/usePlanListFilters'
-import { useAutocompleteKeys } from '@/hooks/useAutocompleteKeys'
 
 type SortKey = 'latest' | 'popular'
 
@@ -48,9 +47,8 @@ export default function CommunityClient({ initialPlans, initialTotal, initialShe
   const t = useTranslations('planner.communityBoard')
   const rootT = useTranslations()
   const { status: authStatus } = useSession()
-  const { iconMap: kwIconMap, getIconUrl } = useKeywordData()
+  const { getIconUrl } = useKeywordData()
   const keywords = useKeywords()
-  const ALL_KEYWORDS = useMemo(() => Object.keys(kwIconMap), [kwIconMap])
   const [browse, setBrowse] = useQueryState('browse', parseAsString.withDefault(''))
   const [search, setSearch] = useQueryState('q', parseAsString.withDefault(''))
   const {
@@ -80,54 +78,18 @@ export default function CommunityClient({ initialPlans, initialTotal, initialShe
   const [inputValue, setInputValue] = useState(search)
   const [debouncedSearch, setDebouncedSearch] = useState(search)
   const scrollRootRef = useRef<HTMLDivElement>(null)
-  const searchRef = useRef<HTMLDivElement>(null)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [acIndex, setAcIndex] = useState(-1)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-
-  const activeInputTermLength = useMemo(() => getActiveTerm(inputValue).activeTerm.length, [inputValue])
-  useEffect(() => {
-    if (showSuggestions && activeInputTermLength > 0) {
-      void ensureIdentities()
-    }
-  }, [showSuggestions, activeInputTermLength, ensureIdentities])
 
   useEffect(() => {
     void ensureIdentities()
   }, [ensureIdentities])
 
-  // 인격 + 키워드 자동완성 후보
-  const suggestions = useMemo(() => buildDeckSuggestions(inputValue, ALL_KEYWORDS, allIdentities), [inputValue, ALL_KEYWORDS, allIdentities])
-
-  useEffect(() => { setAcIndex(suggestions.length > 0 ? 0 : -1) }, [suggestions.length])
-
-  const handleSearchKeyDown = useAutocompleteKeys({
-    open: showSuggestions, count: suggestions.length, index: acIndex, setOpen: setShowSuggestions, setIndex: setAcIndex,
-    onPick: e => {
-      const selected = suggestions[acIndex].label
-      const { prefix } = getActiveTerm(inputValue)
-      // IME 조합 강제 종료
-      e.currentTarget.blur()
-      setShowSuggestions(false)
-      setAcIndex(-1)
-      // IME compositionend → onChange 이후 값 설정 (잔재 방지)
-      setTimeout(() => {
-        setInputValue(prefix + selected)
-        ;(e.target as HTMLInputElement).focus()
-      }, 10)
-    },
+  // Suggestions complete the text after the last + or *.
+  const { prefix, activeTerm } = getActiveTerm(inputValue)
+  const searchGroups = useBoardSuggest({
+    term: activeTerm, pick: name => setInputValue(prefix + name), identities: allIdentities,
+    titles: { identity: t('search.suggestionIdentity'), keyword: t('search.suggestionKeyword') },
   })
-
-  // 외부 클릭 시 자동완성 닫기
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false); setAcIndex(-1)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
 
   // 검색 debounce: inputValue → URL(search) + debouncedSearch
   useEffect(() => {
@@ -178,84 +140,16 @@ export default function CommunityClient({ initialPlans, initialTotal, initialShe
   const totalActiveCount = (inputValue.trim() ? 1 : 0) + (difficulty ? 1 : 0) + (formationCount !== null ? 1 : 0) + activeKeywords.size + selectedIdentityIds.size + collectionFilterCount + Object.values(facetSelections).reduce((sum, list) => sum + list.length, 0)
   const hasAnyFilter = totalActiveCount > 0
 
-  const filterSurface = (
-    <div className={filterStyles.surface}>
-      <section>
-        <div className="relative" ref={searchRef}>
-          <label className={filterStyles.field}>
-            <Search size={16} aria-hidden="true" />
-            <input
-              type="text"
-              value={inputValue}
-              onChange={e => { setInputValue(e.target.value); setShowSuggestions(true) }}
-              onFocus={() => setShowSuggestions(true)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder={t('search.placeholder')}
-              className={filterStyles.fieldInput}
-              aria-label={t('search.label')}
-            />
-            {inputValue ? (
-              <button type="button" onClick={() => { setInputValue(''); setShowSuggestions(false); setAcIndex(-1) }} aria-label={t('search.clear')}>
-                <X size={14} aria-hidden="true" />
-              </button>
-            ) : <FilterFieldHelp text={t('search.hint')} />}
-          </label>
-          {showSuggestions && suggestions.length > 0 && (
-            <div
-              className="absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded"
-              style={{
-                top: '100%',
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                boxShadow: 'var(--shadow-lg)',
-              }}
-            >
-              <div className="px-2.5 py-1" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 600 }}>
-                {t('search.suggestionHeading')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('search.suggestionHint')}</span>
-              </div>
-              {suggestions.map((sg, i) => {
-                const kwIconUrl = sg.type === 'keyword' ? getIconUrl(sg.label) : null
-                const isFocused = acIndex === i
-                return (
-                  <button
-                    key={`${sg.type}-${sg.label}-${i}`}
-                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-white/5"
-                    onClick={() => {
-                      const { prefix } = getActiveTerm(inputValue)
-                      setInputValue(prefix + sg.label)
-                      setShowSuggestions(false)
-                      setAcIndex(-1)
-                    }}
-                    style={{
-                      minHeight: 'var(--deck-filter-control-min)',
-                      cursor: 'pointer',
-                      color: isFocused ? 'var(--gold)' : 'var(--deck-filter-text)',
-                      background: isFocused ? 'var(--deck-filter-surface-active)' : undefined,
-                      borderLeft: isFocused ? '0.125rem solid var(--gold)' : '0.125rem solid transparent',
-                      fontSize: '0.8125rem',
-                    }}
-                  >
-                    {sg.type === 'identity' && sg.imageUrl ? (
-                      <div style={{ width: '1.5rem', height: '1.5rem', borderRadius: '0.1875rem', overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(200,144,10,0.2)' }}>
-                        <Image src={sg.imageUrl} alt="" width={36} height={36} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }} />
-                      </div>
-                    ) : sg.type === 'identity' ? (
-                      <User size={14} style={{ flexShrink: 0, color: '#8a9bb0' }} />
-                    ) : kwIconUrl ? (
-                      <Image src={kwIconUrl} alt="" width={14} height={14} style={{ flexShrink: 0 }} />
-                    ) : null}
-                    <span className="min-w-0 flex-1 truncate">{sg.type === 'keyword' ? localKeyword(sg.label) : sg.label}</span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.625rem', color: 'var(--text-muted)', flexShrink: 0 }}>
-                      {sg.type === 'identity' ? t('search.suggestionIdentity') : t('search.suggestionKeyword')}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </section>
+  // The search box stays out of the aside's scrolling list so its suggestion panel can reach over the results.
+  const searchSection = (
+    <section className={filterStyles.searchHelp}>
+      <SearchBox value={inputValue} onChange={setInputValue} label={t('search.placeholder')} clearLabel={t('search.clear')} groups={searchGroups} />
+      {!inputValue && <FilterFieldHelp text={t('search.hint')} />}
+    </section>
+  )
 
+  const filters = (
+    <>
       <FilterSection label={t('sort.label')}>
         <div className={filterStyles.choices}>
           {(['latest', 'popular'] as SortKey[]).map(key => (
@@ -354,7 +248,7 @@ export default function CommunityClient({ initialPlans, initialTotal, initialShe
         )}
         {codeError && <p className={filterStyles.hint} role="alert" style={{ color: 'var(--error-text)' }}>{t('filters.invalidCode')}</p>}
       </FilterSection>
-    </div>
+    </>
   )
 
   if (!listVisible) return <DiscoveryShelf kind="planner" initialData={initialShelf} onBrowse={() => setBrowse('all', { history: 'push' })} />
@@ -364,15 +258,20 @@ export default function CommunityClient({ initialPlans, initialTotal, initialShe
       <BoardBrowseLock />
       <div className="relative z-[1] mx-auto flex h-full min-h-0 w-full max-w-7xl gap-5">
         <aside
-          className="board-filters hidden h-full shrink-0 overflow-y-auto pr-3 lg:block"
+          className="board-filters hidden h-full shrink-0 lg:block"
           aria-label={t('filters.aside')}
         >
-          {filterSurface}
+          <div className={`${filterStyles.surface} h-full`}>
+            <div className="shrink-0 pr-3">{searchSection}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto pr-3">
+              <div className="flex flex-col gap-6">{filters}</div>
+            </div>
+          </div>
         </aside>
 
         <div ref={scrollRootRef} className="min-h-0 flex-1 pb-16 lg:overflow-y-auto lg:pr-1">
           <BrowseBar
-            search={{ value: inputValue, onChange: v => { setInputValue(v); setShowSuggestions(false) }, onClear: () => { setInputValue(''); setShowSuggestions(false); setAcIndex(-1) }, placeholder: t('search.placeholder'), label: t('search.label') }}
+            search={{ value: inputValue, onChange: setInputValue, onClear: () => setInputValue(''), placeholder: t('search.placeholder'), label: t('search.label') }}
             filterCount={totalActiveCount}
             onOpenFilters={() => setMobileFiltersOpen(true)}
             summary={loading ? '' : hasAnyFilter || filtered.length !== total ? t('result.filtered', { filtered: filtered.length, total }) : t('result.total', { count: total })}
@@ -390,7 +289,10 @@ export default function CommunityClient({ initialPlans, initialTotal, initialShe
 
       <Sheet open={mobileFiltersOpen} onClose={() => setMobileFiltersOpen(false)} title={t('filters.button')} closeLabel={t('filters.close')}>
         <div className="px-5 py-4">
-          {filterSurface}
+          <div className={filterStyles.surface}>
+            {searchSection}
+            {filters}
+          </div>
         </div>
       </Sheet>
 

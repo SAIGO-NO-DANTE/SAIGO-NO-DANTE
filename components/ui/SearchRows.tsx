@@ -9,7 +9,7 @@ export function nameGroup(title: string, hits: readonly Hit[], onPick: (hit: Hit
     rows: hits.map(hit => ({
       key: hit.entry.href,
       onPick: () => onPick(hit),
-      body: <SuggestRow image={hit.entry.icon} poster={poster} name={hit.entry.label} marks={nameMarks(hit)} right={right ? right(hit) : hit.entry.sublabel} />,
+      body: <SuggestRow image={hit.entry.icon} poster={poster} cover={hit.entry.type === 'identity'} name={hit.entry.label} marks={nameMarks(hit)} right={right ? right(hit) : hit.entry.sublabel} />,
     })),
   }
 }

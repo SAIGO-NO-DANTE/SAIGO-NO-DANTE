@@ -4,20 +4,17 @@ import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import { useLocale, useTranslations } from 'next-intl'
-import { Link2, Search, User, X } from 'lucide-react'
+import { Link2, Search } from 'lucide-react'
 import { CONTENT_TYPES, CONTENT_TYPE_COLORS } from '@/lib/constants/deck-tokens'
 import { getIdentityInfoUrl } from '@/lib/utils/images'
 import { useKeywords } from '@/components/providers/KeywordProvider'
 import type { SupportedLang } from '@/lib/i18n'
-import {
-  contentTypeMessageKey,
-  localizeDeckKeyword,
-  type SearchSuggestion,
-} from '@/lib/decks/decks-types'
+import { contentTypeMessageKey, localizeDeckKeyword } from '@/lib/decks/decks-types'
 import type { DeckFilterIdentity, DeckFilterSinner } from './DeckIdentityFilterModal'
 import FormationCountFilter from './FormationCountFilter'
 import InfoScoreLabel from './InfoScoreLabel'
 import Sheet from '@/components/ui/Sheet'
+import SearchBox, { type SuggestGroup } from '@/components/ui/SearchBox'
 import { FilterChoice, FilterFieldHelp, FilterIconTile, FilterPicked, FilterSection, FilterSinnerTiles, FilterTextButton, filterStyles } from '@/components/board/FilterControls'
 
 // The closed BaseModal is SSR-safe; opting out here aborts the whole list's Suspense boundary.
@@ -29,15 +26,9 @@ interface DeckListFiltersProps {
   /** Counts up each time the list's own filters button asks for the filter drawer to open. */
   openSignal?: number
   inputValue: string
+  /** Also what the box's clear button calls, with an empty value. */
   onInputChange: (value: string) => void
-  onInputFocus: () => void
-  onSearchClear: () => void
-  onSearchKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
-  searchRef: React.RefObject<HTMLDivElement | null>
-  showSuggestions: boolean
-  suggestions: SearchSuggestion[]
-  acIndex: number
-  onSuggestionClick: (label: string) => void
+  searchGroups: SuggestGroup[]
   getIconUrl: (kw: string) => string | null
   sort: string
   onSortChange: (s: string) => void
@@ -100,8 +91,7 @@ const INFO_SCORE_OPTIONS = [1, 2, 3] as const
 
 
 export default function DeckListFilters({
-  inputValue, onInputChange, onInputFocus, onSearchClear, onSearchKeyDown,
-  searchRef, showSuggestions, suggestions, acIndex, onSuggestionClick, getIconUrl,
+  inputValue, onInputChange, searchGroups, getIconUrl,
   sort, onSortChange,
   activeContentType, onContentTypeChange,
   allTags, activeTags, showTagFilter, onToggleTagFilter, onToggleTag, onClearTags,
@@ -178,72 +168,16 @@ export default function DeckListFilters({
     rootT(`sinner.${sinner.id}` as Parameters<typeof rootT>[0])
   )
 
-  const filterSurface = (
-    <div className={filterStyles.surface}>
-      <section>
-        <div className="relative" ref={searchRef}>
-          <label className={filterStyles.field}>
-            <Search size={16} aria-hidden="true" />
-            <input
-              type="text"
-              placeholder={t('search.placeholder')}
-              value={inputValue}
-              onChange={e => { onInputChange(e.target.value) }}
-              onFocus={onInputFocus}
-              onKeyDown={onSearchKeyDown}
-              className={filterStyles.fieldInput}
-              aria-label={t('search.label')}
-            />
-            {inputValue ? <button type="button" onClick={onSearchClear} aria-label={t('search.clear')}><X size={14} aria-hidden="true" /></button> : <FilterFieldHelp text={t('search.hint')} />}
-          </label>
-          {showSuggestions && suggestions.length > 0 && (
-            <div
-              className="absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded"
-              style={{
-                top: '100%',
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                boxShadow: 'var(--shadow-lg)',
-              }}
-            >
-              {suggestions.map((sg, i) => {
-                const kwIconUrl = sg.type === 'keyword' ? getIconUrl(sg.label) : null
-                const isFocused = acIndex === i
-                return (
-                  <button
-                    key={`${sg.type}-${sg.label}-${i}`}
-                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-white/5"
-                    onClick={() => onSuggestionClick(sg.label)}
-                    style={{
-                      minHeight: 'var(--deck-filter-control-min)',
-                      cursor: 'pointer',
-                      color: isFocused ? 'var(--gold)' : 'var(--deck-filter-text)',
-                      background: isFocused ? 'var(--deck-filter-surface-active)' : undefined,
-                      borderLeft: isFocused ? '0.125rem solid var(--gold)' : '0.125rem solid transparent',
-                      fontSize: '0.8125rem',
-                    }}
-                  >
-                    {sg.type === 'identity' && sg.imageUrl ? (
-                      <div style={{ width: '1.5rem', height: '1.5rem', borderRadius: '0.1875rem', overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(200,144,10,0.2)' }}>
-                        <Image src={sg.imageUrl} alt="" width={36} height={36} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }} />
-                      </div>
-                    ) : sg.type === 'identity' ? (
-                      <User size={14} style={{ flexShrink: 0, color: '#8a9bb0' }} />
-                    ) : kwIconUrl ? (
-                      <Image src={kwIconUrl} alt="" width={14} height={14} style={{ flexShrink: 0 }} />
-                    ) : null}
-                    <span className="min-w-0 flex-1 truncate">{sg.type === 'keyword' ? localKeyword(sg.label) : sg.label}</span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.625rem', color: 'var(--text-muted)', flexShrink: 0 }}>
-                      {sg.type === 'identity' ? t('search.suggestionIdentity') : t('search.suggestionKeyword')}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </section>
+  // The search box stays out of the aside's scrolling list so its suggestion panel can reach over the results.
+  const searchSection = (
+    <section className={filterStyles.searchHelp}>
+      <SearchBox value={inputValue} onChange={onInputChange} label={t('search.placeholder')} clearLabel={t('search.clear')} groups={searchGroups} />
+      {!inputValue && <FilterFieldHelp text={t('search.hint')} />}
+    </section>
+  )
 
+  const filters = (
+    <>
       <FilterSection label={t('sort.label')}>
         <div className={filterStyles.choices}>
           {(['latest', 'popular'] as SortKey[]).map(key => <FilterChoice key={key} active={sort === key} onClick={() => onSortChange(key)}>{t(`sort.${key}`)}</FilterChoice>)}
@@ -441,21 +375,29 @@ export default function DeckListFilters({
           </>
         )}
       </FilterSection>
-    </div>
+    </>
   )
 
   return (
     <>
       <aside
-        className="decks-filters board-filters hidden h-full shrink-0 overflow-y-auto pr-3 lg:block"
+        className="decks-filters board-filters hidden h-full shrink-0 lg:block"
         aria-label={t('filters.aside')}
       >
-        {filterSurface}
+        <div className={`${filterStyles.surface} h-full`}>
+          <div className="shrink-0 pr-3">{searchSection}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto pr-3">
+            <div className="flex flex-col gap-6">{filters}</div>
+          </div>
+        </div>
       </aside>
 
       <Sheet open={mobileOpen} onClose={() => setMobileOpen(false)} title={t('filters.button')} closeLabel={t('filters.close')}>
         <div className="px-5 py-4">
-          {filterSurface}
+          <div className={filterStyles.surface}>
+            {searchSection}
+            {filters}
+          </div>
         </div>
       </Sheet>
 

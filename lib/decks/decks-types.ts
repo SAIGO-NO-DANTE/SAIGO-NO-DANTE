@@ -1,9 +1,3 @@
-export type SearchSuggestion = {
-  label: string
-  type: 'identity' | 'keyword'
-  imageUrl?: string
-}
-
 type DeckKeywordInfo = {
   nameEn?: string | null
   nameJp?: string | null

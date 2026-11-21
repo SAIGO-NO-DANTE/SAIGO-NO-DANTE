@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { IDENTITY_FILTER_SELECT_LEGACY, IDENTITY_FILTER_SELECT_WITH_SKILL_KEYWORDS, type IdentityNameEntry } from '../lib/filter-params'
 
-// What the deck and plan boards read beside the identity options (search suggestions, the sinner tiles, the formation count
-// parameter). The boards take them from here and not from the entry file: the entry is read by every route, and each
-// export added there adds to every route's first JS.
-export { buildDeckSuggestions, collectFilterSinners, normalizeFormationCountParam } from '../lib/deck-list'
+// What the deck and plan boards read beside the identity options (the sinner tiles, the formation count parameter). The
+// boards take them from here and not from the entry file: the entry is read by every route, and each export added there
+// adds to every route's first JS.
+export { collectFilterSinners, normalizeFormationCountParam } from '../lib/deck-list'
 
 /** Every identity for the filter picker and the search suggestions, read in the browser. Throws when the read fails. */
 export async function loadIdentityFilterOptions(): Promise<IdentityNameEntry[]> {
@@ -33,7 +33,7 @@ export async function loadIdentityFilterOptions(): Promise<IdentityNameEntry[]> 
 
 /**
  * The identities of the filter picker. Read on mount, or with `lazy` only when `ensureLoaded` is called (the plan board
- * waits until the search box needs suggestions). `ensureLoaded` shares one request and rejects when the read fails; a
+ * calls it itself when it mounts). `ensureLoaded` shares one request and rejects when the read fails; a
  * mount read logs the failure instead.
  */
 export function useIdentityFilterOptions({ lazy = false }: { lazy?: boolean } = {}) {

@@ -19,12 +19,11 @@ import { BoardResults, BrowseBar } from '@/features/community/components/Browse'
 import type { RowPost } from '@/features/community/components/BoardParts'
 import { QUERY_OPTIONS } from '@/features/decks'
 import { useDeckCollectionFilter } from '@/features/decks/hooks/useDeckCollectionFilter'
-import { buildDeckSuggestions } from '@/features/decks/hooks/useIdentityFilterOptions'
+import { useBoardSuggest } from '@/features/decks/hooks/useBoardSuggest'
 import { DECK_LIST_PAGE_SIZE as PAGE_SIZE, deriveDeckListData, filterDeckList, mapDeck, mergeDeckRows, normalizeSortKey, useDeckListFilters, type DeckSortKey as SortKey } from '@/features/decks/hooks/useDeckListFilters'
 import { useLocale, useTranslations } from 'next-intl'
 import { showError } from '@/lib/toast'
 import { useRoutePrefetch } from '@/hooks/useRoutePrefetch'
-import { useAutocompleteKeys } from '@/hooks/useAutocompleteKeys'
 
 interface DecksClientProps {
   initialDecks?: DeckSummary[]
@@ -41,8 +40,7 @@ export default function DecksClient({
   const locale = useLocale()
   const t = useTranslations('decks')
   useRoutePrefetch([`/${locale}/decks/new`])
-  const { iconMap: kwIconMap, getIconUrl } = useKeywordData()
-  const ALL_KEYWORDS = useMemo(() => Object.keys(kwIconMap), [kwIconMap])
+  const { getIconUrl } = useKeywordData()
   const { status: authStatus } = useSession()
 
   // ── Deck data state ──
@@ -72,9 +70,6 @@ export default function DecksClient({
   // ── Search UI state ──
   const [inputValue, setInputValue] = useState(search)
   const [debouncedSearch, setDebouncedSearch] = useState(search)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [acIndex, setAcIndex] = useState(-1)
-  const searchRef = useRef<HTMLDivElement>(null)
 
   // ── Deck list filters (URL-synced) ──
   const {
@@ -103,37 +98,12 @@ export default function DecksClient({
   const advancedFilterCount = baseFilterCount + facetSelections.affiliation.length + facetSelections.ego.length
 
   // ── Search suggestions ──
-  const suggestions = useMemo(() => buildDeckSuggestions(inputValue, ALL_KEYWORDS, allIdentities), [inputValue, ALL_KEYWORDS, allIdentities])
-
-  useEffect(() => { setAcIndex(suggestions.length > 0 ? 0 : -1) }, [suggestions.length])
-
-  // ── Keyboard handler for autocomplete ──
-  const handleSearchKeyDown = useAutocompleteKeys({
-    open: showSuggestions, count: suggestions.length, index: acIndex, setOpen: setShowSuggestions, setIndex: setAcIndex,
-    onPick: e => {
-      const selected = suggestions[acIndex].label
-      const { prefix } = getActiveTerm(inputValue)
-      e.currentTarget.blur()
-      setShowSuggestions(false)
-      setAcIndex(-1)
-      setTimeout(() => {
-        setInputValue(prefix + selected);
-        (e.target as HTMLInputElement).focus()
-      }, 10)
-    },
+  // The term after the last + or * is what a suggestion completes.
+  const { prefix, activeTerm } = getActiveTerm(inputValue)
+  const searchGroups = useBoardSuggest({
+    term: activeTerm, pick: name => setInputValue(prefix + name), identities: allIdentities,
+    titles: { identity: t('search.suggestionIdentity'), keyword: t('search.suggestionKeyword') },
   })
-
-  // ── Outside click closes suggestions ──
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false)
-        setAcIndex(-1)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
 
   // ── Search debounce ──
   useEffect(() => {
@@ -279,20 +249,9 @@ export default function DecksClient({
         <DeckListFilters
           openSignal={filterSignal}
           inputValue={inputValue}
-          onInputChange={v => { setInputValue(v); setShowSuggestions(true) }}
-          onInputFocus={() => setShowSuggestions(true)}
-          onSearchClear={() => { setInputValue(''); void setSearch(null, QUERY_OPTIONS); setDebouncedSearch(''); setShowSuggestions(false) }}
-          onSearchKeyDown={handleSearchKeyDown}
-          searchRef={searchRef}
-          showSuggestions={showSuggestions}
-          suggestions={suggestions}
-          acIndex={acIndex}
-          onSuggestionClick={label => {
-            const { prefix } = getActiveTerm(inputValue)
-            setInputValue(prefix + label)
-            setShowSuggestions(false)
-            setAcIndex(-1)
-          }}
+          // Emptying the box (its clear button too) drops the search at once, without the debounce.
+          onInputChange={v => { setInputValue(v); if (!v) { void setSearch(null, QUERY_OPTIONS); setDebouncedSearch('') } }}
+          searchGroups={searchGroups}
           getIconUrl={getIconUrl}
           sort={sort}
           onSortChange={s => { void setSortQuery(s as SortKey, QUERY_OPTIONS) }}
@@ -353,7 +312,7 @@ export default function DecksClient({
 
         <div ref={scrollRootRef} className="min-h-0 flex-1 pb-16 lg:overflow-y-auto lg:pr-1">
           <BrowseBar
-            search={{ value: inputValue, onChange: v => { setInputValue(v); setShowSuggestions(false) }, onClear: () => { setInputValue(''); void setSearch(null, QUERY_OPTIONS); setDebouncedSearch('') }, placeholder: t('search.placeholder'), label: t('search.label') }}
+            search={{ value: inputValue, onChange: setInputValue, onClear: () => { setInputValue(''); void setSearch(null, QUERY_OPTIONS); setDebouncedSearch('') }, placeholder: t('search.placeholder'), label: t('search.label') }}
             sort={{ value: sort, options: (['latest', 'popular'] as const).map(key => ({ key, label: t(`sort.${key}`) })), onChange: key => { void setSortQuery(key as SortKey, QUERY_OPTIONS) } }}
             filterCount={advancedFilterCount + (inputValue.trim() ? 1 : 0)}
             onOpenFilters={() => setFilterSignal(value => value + 1)}

@@ -971,8 +971,6 @@
         "placeholder": "인격, 키워드, 제목...",
         "clear": "검색어 지우기",
         "hint": "+ OR, * AND 검색",
-        "suggestionHeading": "인격 / 키워드",
-        "suggestionHint": "Tab으로 선택",
         "suggestionIdentity": "인격",
         "suggestionKeyword": "키워드"
       },
@@ -2483,7 +2481,6 @@
   "identityDecks": {
     "searchPlaceholder": "제목, 설명, 태그, 키워드 검색...",
     "keyword": "키워드",
-    "tabHint": "Tab으로 선택",
     "latest": "최신순",
     "popular": "인기순",
     "count": "{count}개의 덱",

@@ -2,11 +2,7 @@ import type { DeckSummary } from '@/components/cards/DeckCard'
 import { THEME_KEYWORDS, normalizeThemeKeyword } from '@/lib/constants/keywords'
 import { missingFormationCount } from '@/lib/collection'
 import { DECK_MAIN_KEYWORDS } from '@/lib/decks/keyword-rules'
-import type { SearchSuggestion } from '@/lib/decks/decks-types'
-import { getIdentityPortraitUrl } from '@/lib/utils/images'
-import { getActiveTerm } from '@/lib/utils/search'
 import type { DeckFilterSinner } from '../components/DeckIdentityFilterModal'
-import type { IdentityNameEntry } from './filter-params'
 
 export const DECK_LIST_PAGE_SIZE = 12
 
@@ -59,40 +55,6 @@ export function normalizeInfoScoreParam(value: number | null) {
 export function appendCsvParam(params: URLSearchParams, name: string, values: Iterable<string>) {
   const serialized = [...values].filter(Boolean).join(',')
   if (serialized) params.set(name, serialized)
-}
-
-/** The identity and keyword names that complete the last term of the search box (at most 8, identities first). */
-export function buildDeckSuggestions(inputValue: string, allKeywords: string[], allIdentities: IdentityNameEntry[]): SearchSuggestion[] {
-  const { activeTerm } = getActiveTerm(inputValue)
-  if (activeTerm.length === 0) return []
-  const q = activeTerm.toLowerCase()
-
-  const sortByRelevance = (a: string, b: string) => {
-    const aStarts = a.toLowerCase().startsWith(q) ? 0 : 1
-    const bStarts = b.toLowerCase().startsWith(q) ? 0 : 1
-    if (aStarts !== bStarts) return aStarts - bStarts
-    return a.length - b.length
-  }
-
-  const idMatches: SearchSuggestion[] = allIdentities
-    .filter(id => id.name_kr.toLowerCase().includes(q))
-    .sort((a, b) => sortByRelevance(a.name_kr, b.name_kr))
-    .slice(0, 5)
-    .map(id => ({
-      label: id.name_kr,
-      type: 'identity',
-      imageUrl: id.game_id && id.folder_name && id.sinner_id
-        ? getIdentityPortraitUrl(id.sinner_id, id.folder_name, id.game_id, false)
-        : undefined,
-    }))
-
-  const kwMatches: SearchSuggestion[] = allKeywords
-    .filter(kw => kw.toLowerCase().includes(q))
-    .sort(sortByRelevance)
-    .slice(0, 5)
-    .map(label => ({ label, type: 'keyword' }))
-
-  return [...idMatches, ...kwMatches].slice(0, 8)
 }
 
 export type DeckServerQuery = {
