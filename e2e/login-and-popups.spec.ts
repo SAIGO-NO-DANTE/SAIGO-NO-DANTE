@@ -24,7 +24,7 @@ for(const width of [1440,390]) test(`login and search popup at ${width}px`,async
   await expect(dialog).toBeVisible()
   await expect(dialog.locator('.popup-search')).toHaveCSS('background-color', 'rgb(26, 21, 16)')
   await expect(dialog.locator('.popup-header')).toHaveCSS('display', 'flex')
-  await expect(dialog.getByRole('textbox')).toBeFocused()
+  await expect(dialog.getByRole('combobox')).toBeFocused()
   await page.keyboard.press('Shift+Tab')
   expect(await dialog.evaluate(node=>node.contains(document.activeElement))).toBe(true)
   await page.screenshot({path:`/tmp/limbus-search-${width}.png`})
