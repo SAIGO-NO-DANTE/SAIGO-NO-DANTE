@@ -37,13 +37,13 @@ export function pickerEntries<T>(type: 'identity' | 'ego', rows: readonly T[], l
 
 /**
  * What a query finds among the `visible` items (the host's filters applied): `list` is the grid, best match first (the
- * items as they came for an empty query); `top` the first six items `pickable` allows, each with its hit, for the suggestion panel.
+ * items as they came for an empty query); `top` the first six items `pickable` allows, each with its hit, for the suggestion panel; `total` how many it allows in all.
  */
 export function pickerFound<T>(entries: IndexEntry[], visible: readonly T[], idOf: (item: T) => string, query: string, pickable: (item: T, hit: Hit) => boolean = () => true) {
-  if (!query.trim()) return { list: visible, top: [] as { item: T; hit: Hit }[] }
+  if (!query.trim()) return { list: visible, top: [] as { item: T; hit: Hit }[], total: 0 }
   const hits = search(entries, query)
   const hitOf = new Map(hits.map(hit => [hit.entry.href, hit]))
   const list = keepFound(visible, hits, idOf, false)
-  const top = list.flatMap(item => pickable(item, hitOf.get(idOf(item))!) ? [{ item, hit: hitOf.get(idOf(item))! }] : []).slice(0, 6)
-  return { list, top }
+  const allowed = list.flatMap(item => pickable(item, hitOf.get(idOf(item))!) ? [{ item, hit: hitOf.get(idOf(item))! }] : [])
+  return { list, top: allowed.slice(0, 6), total: allowed.length }
 }

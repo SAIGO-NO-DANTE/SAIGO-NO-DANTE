@@ -243,7 +243,7 @@ describe('damage sources', () => {
     expect(suggestDamageSources(sources, '취얀').map(row => row.label)).toEqual(['취약', '참격 취약', '취약점 분석기'])
     expect(suggestDamageSources(sources, '취약점분석기').map(row => row.label)).toEqual(['취약점 분석기'])
     // The list is the whole result: a name that only holds the typed letter stays in it, after the engine's matches.
-    expect(suggestDamageSources(sources, '약').map(row => row.label)).toEqual(['참격 취약', '취약', '취약점 분석기'])
+    expect(suggestDamageSources(sources, '약').map(row => row.label)).toEqual(['취약', '참격 취약', '취약점 분석기'])
     expect(suggestDamageSources(sources, '취약', { group: 'target', limit: 1 }).map(row => row.label)).toEqual(['취약'])
     expect(suggestDamageSources(sources, '주')[0].modifier).toEqual({ name: '주시', keyword: '주시', value: 20, options: [20], target: 'damage', side: 'target' })
     // Inside one group: everything of the group before a name is typed, then only its matches.

@@ -70,10 +70,10 @@ const KIND_OF: Record<number, HitKind> = { [TIER.exact]: 'exact', [TIER.prefix]:
 const SIMILARITY: Record<HitKind, number> = { exact: 1, prefix: 0.9, word: 0.8, contains: 0.7, initials: 0.6, words: 0.5, text: 0.4, typo: 0.3 }
 type Match = { tier: number; score: number; ranges: [number, number][]; kind: HitKind }
 
-/** 접은 검색어 q가 원문 text 어디에 맞는지. 초성만이거나 한 글자면 이름 가운데에는 맞추지 않는다 */
+/** 접은 검색어 q가 원문 text 어디에 맞는지. 초성만이거나 한글이 아닌 한 글자면 이름 가운데에는 맞추지 않는다(완성된 한글 한 글자는 맞춘다: "꽃" → "불꽃") */
 function matchText({ text, f }: Field, q: string): Match | null {
   const allCho = onlyCho(q)
-  const strict = q.length === 1 || allCho
+  const strict = allCho || (q.length === 1 && !isSyllable(q))
   const last = q.length - 1
   let best: Match | null = null
   outer: for (let i = 0; i + q.length <= f.text.length; i++) {

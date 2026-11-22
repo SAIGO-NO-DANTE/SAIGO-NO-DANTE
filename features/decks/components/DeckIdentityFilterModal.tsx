@@ -60,7 +60,9 @@ export default function DeckIdentityFilterModal({ open, sinnerId, sinners, ident
   // Newest first; with a query the best match first.
   const { list: shown, top } = useMemo(() => pickerFound(
     entries, identities.filter(identity => (!sinnerId || identity.sinner_id === sinnerId) && (!grade || String(identity.rarity) === grade)).sort(compareReleaseDate), identity => identity.id, query,
-  ), [entries, identities, sinnerId, grade, query])
+    // What is already in the filter is not suggested: picking it again would take it off.
+    identity => !selectedIdentityIds.has(identity.id),
+  ), [entries, identities, sinnerId, grade, query, selectedIdentityIds])
   // What pressing the card does: a pressed card joins the filter and closes the window, the chosen one comes off.
   const pick = (identityId: string) => { onToggleIdentity(identityId); if (!selectedIdentityIds.has(identityId)) onClose() }
   // The picks in view: this sinner's, or all of them when every sinner is shown.

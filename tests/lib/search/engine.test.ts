@@ -181,6 +181,13 @@ describe('a syllable still being typed', () => {
     expect(search([named('일반'), named('이름')], '이').map(h => h.entry.label)).toEqual(['이름'])
     expect(one(named('하나'), '한').kind).toBe('prefix')
   })
+  it('one whole syllable also matches inside a name, under the names that start with it', () => {
+    expect(search([named('불꽃 깃털'), named('꽃잎')], '꽃').map(h => h.entry.label)).toEqual(['꽃잎', '불꽃 깃털'])
+    expect(one(named('취약'), '약').kind).toBe('contains')
+    // a Latin letter or a lone consonant still says too little to match mid-name
+    expect(search([named('abc')], 'b')).toEqual([])
+    expect(search([named('불꽃')], 'ㄲ')).toEqual([])
+  })
 })
 
 describe('a match through context only', () => {
