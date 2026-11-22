@@ -7,7 +7,8 @@
 }
 
 /* Row 1: back link left, draft menu, code copy and upload right. The guest hint has its own line under it. Row 2: title, content type, series. */
-.deck-workspace-header{display:grid;gap:.5rem;padding:.5rem 0 1.25rem}
+/* Above the section bar (z-index 30) that follows it: the header's menus (content type, drafts, series) open downwards over the bar. */
+.deck-workspace-header{position:relative;z-index:31;display:grid;gap:.5rem;padding:.5rem 0 1.25rem}
 .deck-workspace-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.25rem 1rem}
 .deck-workspace-back{min-height:var(--deck-touch)}
 .deck-workspace-actions{display:flex;align-items:center;justify-content:flex-end;gap:.5rem;min-width:0}
