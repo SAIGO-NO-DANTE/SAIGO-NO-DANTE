@@ -16,12 +16,12 @@ async function saveToFirstSlot(page: Page) {
   await page.getByRole('button',{name:saveDraft}).click()
   await page.getByRole('menuitem',{name:'저장',exact:true}).first().click()
 }
-// After a reload the editor may offer the newest autosave in a dialog; this test restores the slot it saved, so it turns the offer down.
+// After a reload the editor may offer the newest autosave in a modal that hides the draft button; this test restores the
+// slot it saved, so it turns the offer down whenever it shows.
 async function restoreDraft(page: Page) {
+  const offer=page.getByRole('dialog',{name:'임시 저장한 글이 있어요'})
+  await page.addLocatorHandler(offer,async()=>{await offer.getByRole('button',{name:'버리기',exact:true}).click()})
   await expect(page.getByRole('button',{name:saveDraft})).toBeVisible()
-  await page.waitForTimeout(1000)
-  const offer=page.getByRole('button',{name:'버리기',exact:true})
-  if (await offer.isVisible()) await offer.click()
   await page.getByRole('button',{name:saveDraft}).click()
   await page.getByRole('menuitem',{name:'불러오기',exact:true}).first().click()
 }
@@ -131,9 +131,8 @@ for (const width of [1440,390]) test(`asset picker and game frames at ${width}px
   await insert(page,'스킬')
   await expect(page.getByRole('dialog',{name:'스킬 추가'}).locator('.note-direct-item').first()).toBeVisible()
   await page.locator('.note-direct-item').first().click()
-  const power=page.locator('.note-asset-node--skill [data-coin-power]')
-  await expect(power).toBeVisible()
-  await expect(power).toHaveCSS('display','flex')
+  // The skill is drawn as the game's skill box, with its coins.
+  await expect(page.locator('.note-asset-node--skill').getByRole('img',{name:/^코인 \d/}).first()).toBeVisible()
   await page.getByRole('button',{name:'미리보기',exact:true}).click()
   await expect(page.locator('.note-editor-preview .note-asset-view--ego img[src*="ego-frame-outer"]')).toBeVisible()
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1)
