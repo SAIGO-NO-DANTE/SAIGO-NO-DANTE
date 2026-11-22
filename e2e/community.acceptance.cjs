@@ -296,11 +296,16 @@ async function cleanup() {
   await p
     .getByRole("heading", { name: "기록하는관리자", exact: true })
     .waitFor();
-  await p.getByRole("checkbox", { name: /프로필 공개/ }).uncheck();
+  // The visibility control is a switch (aria-checked), not a checkbox.
+  const visibility = p.getByRole("switch", { name: "프로필 공개", exact: true });
+  assert.equal(await visibility.getAttribute("aria-checked"), "true");
+  await visibility.click();
   await p.getByText("비공개 프로필", { exact: true }).waitFor();
+  assert.equal(await visibility.getAttribute("aria-checked"), "false");
   await req(anon, `/api/community/profiles/${user.id}`, "GET", null, 404);
-  await p.getByRole("checkbox", { name: /프로필 공개/ }).check();
+  await visibility.click();
   await p.getByRole("link", { name: "공개 프로필 보기" }).waitFor();
+  assert.equal(await visibility.getAttribute("aria-checked"), "true");
   for (const width of [1440, 390]) {
     await p.setViewportSize({ width, height: 1000 });
     for (const lang of ["ko", "en", "ja"])
