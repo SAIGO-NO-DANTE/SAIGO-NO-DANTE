@@ -114,6 +114,12 @@ describe('one scrolling page of three sections', () => {
     expect(css).toContain('.deck-subtabs [role="tab"]{min-height:var(--deck-touch)}')
   })
 
+  it('the header stacks over the section bar, so its menus open over the bar instead of under it', () => {
+    const css = readFileSync(join(process.cwd(), 'features/decks/components/deck-workspace.css'), 'utf8')
+    const z = (selector: string) => Number(new RegExp(`${selector}\\{[^}]*z-index:(\\d+)`).exec(css)?.[1])
+    expect(z('\\.deck-workspace-header')).toBeGreaterThan(z('\\.deck-section-nav'))
+  })
+
   it('the note editor mounts late and keeps its height until then', () => {
     expect(builder).toContain("dynamic(() => import('@/features/decks/components/DeckNoteEditor')")
     expect(builder).toContain('IntersectionObserver')
