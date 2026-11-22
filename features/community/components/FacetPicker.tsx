@@ -70,8 +70,9 @@ export function FacetPickerModal({ kind, facets, selected, onToggle, onClose }: 
   // Searched by the shared engine; the list keeps what is found, best match first, and picking a row does what pressing its card does.
   const affiliationIndex = useMemo(() => affiliationEntries(facets?.affiliations ?? [], lang), [facets, lang])
   const themeIndex = useMemo(() => themePackEntries(facets?.themes ?? [], lang), [facets, lang])
-  const affiliations = pickerFound(affiliationIndex, facets?.affiliations ?? [], item => item.key, query)
-  const themes = pickerFound(themeIndex, facets?.themes ?? [], theme => String(theme.id), query)
+  // What is already picked is not suggested: picking it again would take it off.
+  const affiliations = pickerFound(affiliationIndex, facets?.affiliations ?? [], item => item.key, query, item => !selectedSet.has(item.key))
+  const themes = pickerFound(themeIndex, facets?.themes ?? [], theme => String(theme.id), query, theme => !selectedSet.has(String(theme.id)))
   const sinnerName = (id: string) => rootT(`sinner.${id}` as Parameters<typeof rootT>[0])
 
   let body: ReactNode = null

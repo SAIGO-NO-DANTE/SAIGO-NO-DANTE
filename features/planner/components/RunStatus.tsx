@@ -48,9 +48,11 @@ export default function RunStatus({ state, dispatch, gifts, giftMap, recipes }: 
     const trigger = modalTrigger.current
     requestAnimationFrame(() => { if (trigger?.isConnected) trigger.focus() })
   }
-  const entries = useMemo(() => giftEntries(gifts, { locale }), [gifts, locale])
+  const searching = search.trim() !== ''
+  // Built on the first letter: most runs never search here.
+  const entries = useMemo(() => searching ? giftEntries(gifts, { locale }) : [], [searching, gifts, locale])
   // A gift found only by its effect is no name to suggest.
-  const { list, top } = pickerFound(entries, gifts, gift => gift.id, search, (_, hit) => hit.kind !== 'text')
+  const { top, total } = pickerFound(entries, gifts, gift => gift.id, search, (_, hit) => hit.kind !== 'text')
 
   return (
     <div data-run-status role="region" aria-label={t('viewOverview')} className="flex min-w-0 flex-col gap-8 lg:order-2 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:border-l lg:border-[var(--border)] lg:px-6">
@@ -80,7 +82,7 @@ export default function RunStatus({ state, dispatch, gifts, giftMap, recipes }: 
             // A gift already a target is listed as added; picking it only empties the field.
             gift => { if (!targetIds.has(gift.game_id)) dispatch({ type: 'ADD_TARGET_GIFT', giftId: String(gift.game_id) }); setSearch('') },
             gift => targetIds.has(gift.game_id) ? t('added') : undefined)]} />
-        {search.trim() && <p role="status" className="sr-only">{t('giftSearchCount', { count: list.length })}</p>}
+        {search.trim() && <p role="status" className="sr-only">{t('giftSearchCount', { count: total })}</p>}
       </section>
       <InventoryPanel state={state} dispatch={dispatch} giftMap={giftMap} recipes={recipes} />
       {modalGift && <PlannerGiftModal gift={modalGift} onClose={closeModal} gifts={gifts} />}

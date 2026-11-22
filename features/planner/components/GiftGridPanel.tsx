@@ -50,7 +50,8 @@ export default memo(function GiftGridPanel({
   const labels = useMemo(() => (names ? refNameLabels(names) : undefined), [names])
   useEffect(() => { if (query.trim()) wantGameTextRefs() }, [query])
 
-  const entries = useMemo(() => giftEntries(gifts, { names: labels, locale }), [gifts, labels, locale])
+  // No index for the hosts that show no search field.
+  const entries = useMemo(() => searchable ? giftEntries(gifts, { names: labels, locale }) : [], [searchable, gifts, labels, locale])
   const atLimit = maxSelect !== undefined && selectedIds.size >= maxSelect
   // The keyword sidebar and the search both narrow the grid; a gift whose card is disabled is not suggested.
   const { byGrade: grouped, shown, top } = useMemo(() => giftGrid(gifts, entries, {

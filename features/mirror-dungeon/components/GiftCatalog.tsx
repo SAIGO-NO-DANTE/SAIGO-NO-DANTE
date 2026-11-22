@@ -529,7 +529,7 @@ export default function GiftCatalog({
             keywordOrder={keywordOrder}
             keywordLabels={keywordLabels}
             getGiftKeywordIcon={getGiftKeywordIcon}
-            usable={gift => !cardProps?.(gift)?.disabled}
+            usable={gift => !cardProps?.(gift)?.disabled && !selectedIds?.has(gift.id)}
             onPick={selectGift}
             value={inputValue}
             onChange={value => { setInputValue(value); if (!value) setSearch('') }}

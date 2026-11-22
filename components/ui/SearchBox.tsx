@@ -134,7 +134,7 @@ export default function SearchBox({ value, onChange, label, clearLabel, groups, 
         role="combobox"
         aria-label={label}
         aria-expanded={shown}
-        aria-controls={`${id}-list`}
+        aria-controls={shown ? `${id}-list` : undefined}
         aria-autocomplete="list"
         aria-activedescendant={shown && at >= 0 ? `${id}-${at}` : undefined}
         data-suggest-open={shown || undefined}

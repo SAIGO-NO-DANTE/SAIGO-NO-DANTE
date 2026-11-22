@@ -44,7 +44,9 @@ export default function RunSetup({ state, dispatch, gifts, giftMap, recognition,
   const [draft, setDraft] = useState<ReturnType<typeof loadRunDraft>>(null)
   useEffect(() => { setDraft(loadRunDraft()) }, [])
 
-  const entries = useMemo(() => giftEntries(gifts, { locale }), [gifts, locale])
+  const searching = giftSearch.trim() !== ''
+  // Built on the first letter: most runs never search here.
+  const entries = useMemo(() => searching ? giftEntries(gifts, { locale }) : [], [searching, gifts, locale])
   // A gift found only by its effect is no name to suggest.
   const { top } = pickerFound(entries, gifts, gift => gift.id, giftSearch, (_, hit) => hit.kind !== 'text')
 

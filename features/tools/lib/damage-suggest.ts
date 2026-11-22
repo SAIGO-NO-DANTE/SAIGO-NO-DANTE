@@ -40,7 +40,8 @@ export function suggestDamageSources(sources: DamageSources, query: string, { gr
   if (!typed) return rows.slice(0, limit)
   const byKey = new Map(rows.map(row => [row.key, row]))
   const found = search(entries, typed).map(hit => byKey.get(hit.entry.href)!)
-  // This list is the whole result, not a hint: a name that merely holds the typed text ("약" in "취약") stays in it, after the engine's matches.
+  // This list is the whole result, not a hint: a name that merely holds the typed text stays in it, after the engine's
+  // matches (the engine itself skips one Latin letter or a lone consonant inside a name).
   const seen = new Set(found), needle = typed.toLocaleLowerCase()
   return [...found, ...rows.filter(row => !seen.has(row) && row.label.toLocaleLowerCase().includes(needle))].slice(0, limit)
 }
