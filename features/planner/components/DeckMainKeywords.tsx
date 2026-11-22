@@ -9,17 +9,19 @@ import type { SupportedLang } from '@/lib/i18n/types'
 import MainKeywordChip from './MainKeywordChip'
 
 /** The main-keyword chips above the identity board: counts from the formation, picked ones lit, the cap greying the rest. */
-export default function DeckMainKeywords({ counts, effectiveKeywords, onToggle }: {
+export default function DeckMainKeywords({ counts, effectiveKeywords, onToggle, label }: {
   counts: Record<string, number>
   effectiveKeywords: string[]
   onToggle: (keyword: string) => void
+  /** The strip's name when the host is not the planner */
+  label?: string
 }) {
   const tDeck = useTranslations('planner.deckTab')
   const locale = useLocale() as SupportedLang
   const { getIconUrl, keywords: keywordInfo } = useKeywordData()
   const reduceMotion = useReducedMotion()
   return (
-    <div className="planner-main-keywords" aria-label={tDeck('mainKeywords.label')}>
+    <div className="planner-main-keywords" aria-label={label ?? tDeck('mainKeywords.label')}>
       {DECK_MAIN_KEYWORDS.map(keyword => {
         const iconUrl = getIconUrl(keyword)
         const count = counts[keyword] ?? 0
