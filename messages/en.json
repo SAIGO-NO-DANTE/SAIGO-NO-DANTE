@@ -311,9 +311,7 @@
       "progress": "Identities {count}/{total}",
       "forkTitle": "{title} (fork)",
       "tabs": {
-        "identity": "Identities",
-        "ego": "E.G.O",
-        "skillset": "Skills",
+        "analysis": "Analysis",
         "note": "Deck notes"
       },
       "actions": {
@@ -329,11 +327,6 @@
       "fields": {
         "title": "Deck title",
         "titlePlaceholder": "Enter a deck title",
-        "deckCode": "Formation code",
-        "codePlaceholder": "Paste formation code",
-        "applyCode": "Apply",
-        "applying": "Applying",
-        "codeError": "Code error",
         "contentType": "Content type",
         "required": "Required"
       },

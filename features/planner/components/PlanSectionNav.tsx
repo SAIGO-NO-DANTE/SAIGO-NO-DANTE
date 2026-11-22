@@ -9,7 +9,7 @@ type Section = { id: string; label: string; count?: number | null }
  * passed while scrolling redrew the whole plan, hundreds of gift cards included (owner 2026-11-12: scrolling a plan
  * exported from Assist with many gifts lags).
  */
-export default function PlanSectionNav({ sections, label, className }: { sections: Section[]; label: string; className?: string }) {
+export default function PlanSectionNav({ sections, label, className, onSelect }: { sections: Section[]; label: string; className?: string; onSelect?: (id: string) => void }) {
   const sectionKey = sections.map(section => section.id).join()
   const [active, setActive] = useState(sections[0]?.id)
   // 스크롤 위치에 맞춰 구역 목차의 현재 항목을 표시한다: 화면 위 30% 선을 지난 마지막 구역
@@ -48,6 +48,7 @@ export default function PlanSectionNav({ sections, label, className }: { section
 
   // 해시를 남기지 않고 이동해 BackLink의 뒤로 가기 기록을 그대로 둔다
   const go = (id: string) => {
+    onSelect?.(id)
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     document.getElementById(id)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
     setActive(id)
