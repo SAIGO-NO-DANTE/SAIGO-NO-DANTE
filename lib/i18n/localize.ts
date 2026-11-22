@@ -55,6 +55,7 @@ const AFFILIATION_MAP: Record<string, { en: string; ja: string }> = {
   '신체파': { en: 'School of Corporism', ja: '身体派' },
   '소지': { en: 'The Pinky', ja: '小指' },
   '쌍갈고리 해적단': { en: 'Twinhook Pirates', ja: '双鉤海賊団' },
+  '쐐기 사무소': { en: 'Wedge Office', ja: '楔事務所' },
   '야수파': { en: 'School of Fauvism', ja: '野獣派' },
   '약지': { en: 'The Ring', ja: '薬指' },
   '어금니 사무소': { en: 'Molar Office', ja: '奥歯事務所' },
