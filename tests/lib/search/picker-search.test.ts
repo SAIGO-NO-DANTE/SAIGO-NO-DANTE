@@ -54,7 +54,9 @@ describe('picker search', () => {
   it('lists at most the cap in the panel and every found item in the grid', () => {
     const many = Array.from({ length: 9 }, (_, i) => ({ id: `n${i}`, name: `불꽃 인격 ${i}` }))
     const found = pickerFound(pickerEntries('identity', many, 'ko', read), many, idOf, '불꽃')
-    expect([found.list.length, found.top.length]).toEqual([9, 6])
+    expect([found.list.length, found.top.length, found.total]).toEqual([9, 6, 9])
+    // `total` counts what may be picked, not everything found
+    expect(pickerFound(pickerEntries('identity', many, 'ko', read), many, idOf, '불꽃', row => row.id !== 'n0').total).toBe(8)
   })
 
   it('keeps the grid to the items the host shows, so its other filters stay ANDed', () => {

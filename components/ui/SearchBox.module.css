@@ -37,5 +37,5 @@
 .cut span { color: var(--text-secondary); font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* On a phone the keyboard takes half the screen: about five rows, the rest by scrolling the panel. */
-@media (max-width: 39.99rem) { .input { height: 2.75rem; font-size: 1rem; } .panel { max-height: min(40dvh, 16rem); } }
+@media (max-width: 39.99rem) { .input { height: 2.75rem; } .panel { max-height: min(40dvh, 16rem); } }
 @media (hover: none) { .row { min-height: 2.75rem; } }
