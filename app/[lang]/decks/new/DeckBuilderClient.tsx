@@ -13,7 +13,7 @@ import AutosaveRestoreModal from '@/components/ui/AutosaveRestoreModal'
 import { useAutosaveDraft } from '@/features/notes/hooks/useAutosaveDraft'
 import SeriesPicker from '@/features/community/components/SeriesPicker'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useReducedMotion } from 'motion/react'
 import * as m from 'motion/react-m'
@@ -32,9 +32,9 @@ import {
 // IdentityCard → IdentityTab 내부에서 직접 렌더링
 
 import { encodeDeckCode, decodeDeckCode } from '@/lib/decks/deck-code-utils'
-import { contentTypeMessageKey } from '@/features/decks'
+import { LCB_IDS } from '@/lib/constants/game'
+import { builderSectionId, builderSections, contentTypeMessageKey, legacyTab } from '@/features/decks'
 import { buildDeckInsightData, buildDeckSaveRows, useDeckBuilderModel, useDeckBuilderState, type EditMode, type ForkMode } from '@/features/decks/hooks/useDeckBuilder'
-import UnderlineTabBar, { type TabItem } from '@/components/ui/UnderlineTabBar'
 import Dropdown from '@/components/ui/Dropdown'
 import Button from '@/components/ui/Button'
 import ConfirmModal from '@/components/ui/ConfirmModal'
@@ -42,13 +42,16 @@ import FormationSourceModal from '@/features/planner/components/FormationSourceM
 import { deckFormationFromPlan } from '@/lib/planner/formation-transfer'
 import type { EgoSlot, IdentitySlot } from '@/lib/planner/types'
 import { CONTENT_TYPES } from '@/lib/constants/deck-tokens'
-import { Users, Sparkles, SlidersHorizontal, FileText, ArrowLeft, Copy, Download, Upload, Check } from 'lucide-react'
+import { ArrowLeft, Check, Copy, Upload } from 'lucide-react'
+import PlanSectionNav from '@/features/planner/components/PlanSectionNav'
+import DeckSubTabs from '@/features/planner/components/DeckSubTabs'
+import DeckMainKeywords from '@/features/planner/components/DeckMainKeywords'
+import DeckSection from './_components/DeckSection'
 import { IdentityTab, EgoTab, SkillsetTab } from '@/features/decks/components/DeckBuilderTabs'
 import DeckInsights from '@/features/decks/components/DeckInsights'
 import DeckResourceSummary from '@/features/decks/components/DeckResourceSummary'
 import type { SupportedLang } from '@/lib/i18n/types'
 import type { EgoGiftNote } from '@/lib/types'
-import { MAX_DECK_MAIN_KEYWORDS } from '@/lib/decks/keyword-rules'
 
 
 // CONTENT_TYPES, ContentType, CONTENT_TYPE_COLORS → deck-tokens.ts에서 import
@@ -65,8 +68,6 @@ interface Props {
   forkMode?: ForkMode
 }
 
-type Tab = 'identity' | 'ego' | 'skillset' | 'note'
-
 const DeckNoteEditor = dynamic(() => import('@/features/decks/components/DeckNoteEditor'), {
   ssr: false,
   loading: () => null,
@@ -78,6 +79,7 @@ export default function DeckBuilderClient({ sinners, identities, egos, skills, p
   const deckT = useTranslations('decks')
   const builderT = useTranslations('decks.builder')
   const tTempSaves = useTranslations('planner.tempSaves')
+  const detailT = useTranslations('decks.detail')
   const tCopy = useTranslations('planner.detail')
   const router = useRouter()
   // The editor state first (it cleans ?formation= from the address), then the tab, the saved drafts, and last what is derived from the state.
@@ -86,29 +88,48 @@ export default function DeckBuilderClient({ sinners, identities, egos, skills, p
     deckSlots, setDeckSlots, egoSlots, setEgoSlots, formationOrder, setFormationOrder, title, setTitle, contentType, setContentType,
     description, setDescription, gacksungSlots, upties, setUpties, skillDistribution, setSkillDistribution,
   } = builderState
+  // ?tab= keeps the formation's inner tab; an old link to the note tab scrolls to the note section once.
   const [tabParam, setTab] = useQueryState('tab', parseAsString.withDefault('identity'))
-  const tab = (tabParam as Tab) || 'identity'
+  const { tab, scrollTo } = legacyTab(tabParam)
   const [saving, setSaving] = useState(false)
   const [pin, setPin] = useState('')
   // undefined: the author did not touch the series picker, so the deck's series stays as it is
   const [seriesChoice, setSeriesChoice] = useState<string | null | undefined>(undefined)
   // toast는 Sonner가 글로벌로 처리 (showError from lib/toast)
   const [descPreview, setDescPreview] = useState(false)
-  const [codeInput, setCodeInput] = useState('')
   const [codeCopied, setCodeCopied] = useState(false)
-  const [codeApplying, setCodeApplying] = useState(false)
-  const [codeError, setCodeError] = useState(false)
   const { status: authStatus } = useSession()
   const [draftSlots, setDraftSlots] = useState<TempSlot<DeckDraft>[]>([])
   const reduceMotion = useReducedMotion()
+  // The note editor is heavy: it loads when its section nears the screen, when the section bar is pressed, or when the deck already has a note.
+  const [noteOpen, setNoteOpen] = useState(false)
+  const noteHolder = useRef<HTMLDivElement>(null)
+  const showNote = noteOpen || description.trim() !== ''
+  // Once shown the editor stays: a note that is emptied (or an edit of a deck that had one) must not unmount it and lose what is typed next.
+  useEffect(() => { if (description.trim() !== '') setNoteOpen(true) }, [description])
 
   useEffect(() => {
     setDraftSlots(loadDeckDraftSlots())
   }, [])
 
+  useEffect(() => {
+    if (!scrollTo) return
+    setNoteOpen(true)
+    requestAnimationFrame(() => document.getElementById(builderSectionId(scrollTo))?.scrollIntoView({ block: 'start' }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const holder = noteHolder.current
+    if (showNote || !holder) return
+    const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) setNoteOpen(true) }, { rootMargin: '0px 0px 600px 0px' })
+    observer.observe(holder)
+    return () => observer.disconnect()
+  }, [showNote])
+
   const {
     skillsByIdentityId, passivesByIdentityId, deckKeywordCounts, effectiveMainKeywords, formationGiftKeywordCounts, allGiftKeywordCounts,
-    handleMainKeywordToggle, handleFormationToggle, identityCount, egoCount, skillsetCustomCount, draftState,
+    handleMainKeywordToggle, handleFormationToggle, identityCount, draftState,
     applyDraft, applyImportedFormation, applyDecodedDeck,
   } = useDeckBuilderModel({ sinners, identities, egos, skills, passives, state: builderState })
 
@@ -195,16 +216,23 @@ export default function DeckBuilderClient({ sinners, identities, egos, skills, p
     else applyImport(formation)
   }
 
-  const handleApplyCode = async () => {
-    if (!codeInput.trim()) return
-    setCodeApplying(true)
-    setCodeError(false)
-    const result = await decodeDeckCode(codeInput.trim(), sinners, identities, egos)
-    setCodeApplying(false)
-    if (!result) { setCodeError(true); return }
+  // The board's tool row asks for this: false when the text is not a formation code (the row then shows its invalid state).
+  // A code replaces the whole formation and the paste button reads the clipboard at once, which may hold an old code:
+  // once anything was chosen it asks first, as the planner does.
+  type DecodedDeck = NonNullable<Awaited<ReturnType<typeof decodeDeckCode>>>
+  const tCode = useTranslations('planner.deckTab.identity')
+  const [pendingCode, setPendingCode] = useState<DecodedDeck | null>(null)
+  const applyCode = (result: DecodedDeck) => {
     applyDecodedDeck(result)
-    setCodeInput('')
     setTab('identity')
+  }
+  const handleApplyCode = async (code: string) => {
+    const result = await decodeDeckCode(code, sinners, identities, egos)
+    if (!result) return false
+    const untouched = formationOrder.length === 0 && Object.values(deckSlots).every(identity => !identity || identity.game_id === LCB_IDS[identity.sinner_id])
+    if (untouched) applyCode(result)
+    else setPendingCode(result)
+    return true
   }
 
   const handleCopyCode = async () => {
@@ -219,13 +247,8 @@ export default function DeckBuilderClient({ sinners, identities, egos, skills, p
     setTimeout(() => setCodeCopied(false), 2000)
   }
 
-  const tabItems: TabItem[] = [
-    { key: 'identity', label: builderT('tabs.identity'), badge: identityCount || undefined, icon: Users },
-    { key: 'ego',      label: builderT('tabs.ego'), badge: egoCount || undefined, icon: Sparkles },
-    { key: 'skillset', label: builderT('tabs.skillset'), badge: skillsetCustomCount || undefined, icon: SlidersHorizontal },
-    { key: 'note', label: builderT('tabs.note'), icon: FileText },
-    // 편성 순서는 인격 탭의 40%/60% 호버로 통합
-  ]
+  const hasInsights = deckInsights.identities.length > 0
+  const sectionLabels = { formation: detailT('sectionFormation'), analysis: builderT('tabs.analysis'), note: builderT('tabs.note') }
 
   return (
     <div className="min-h-[100dvh] pt-24 pb-20 sm:pt-28" style={{ background: 'var(--bg-deep)' }}>
@@ -233,235 +256,203 @@ export default function DeckBuilderClient({ sinners, identities, egos, skills, p
       <ConfirmModal open={pendingImport !== null} title={tImport('replaceTitle')} message={pendingImport?.title || tImport('untitled')}
         confirmLabel={tImport('replaceConfirm')} variant="warning"
         onConfirm={() => { if (pendingImport) applyImport(pendingImport.formation); setPendingImport(null) }} onCancel={() => setPendingImport(null)} />
+      <ConfirmModal open={pendingCode !== null} title={tCode('codeReplaceTitle')} message={tCode('codeReplaceMessage')}
+        confirmLabel={tCode('codeReplaceConfirm')} cancelLabel={tCode('codeCancel')} variant="warning"
+        onConfirm={() => { if (pendingCode) applyCode(pendingCode); setPendingCode(null) }} onCancel={() => setPendingCode(null)} />
       <AutosaveRestoreModal savedAt={autosave.offer?.savedAt ?? null} onRestore={autosave.restore} onDiscard={autosave.discard} />
       <div className="deck-workspace mx-auto max-w-6xl px-3 sm:px-6">
-        <header
-          className="mb-6"
-          style={{
-            borderBottom: '1px solid var(--border)',
-          }}
-        >
-          <div className="deck-workspace-header py-4">
-            <div className="deck-workspace-heading">
-              <div className="min-w-0">
-                <BackLink href="/decks" locale={locale as SupportedLang} className="mb-0.5 inline-flex min-h-10 items-center gap-1.5 rounded px-1 transition-colors sm:min-h-11" style={{ color: 'var(--text-muted)', fontSize: '0.9375rem' }}>
+        <header className="deck-workspace-header">
+          <div className="deck-workspace-top">
+            <div className="min-w-0">
+              <BackLink href="/decks" locale={locale as SupportedLang} className="deck-workspace-back inline-flex items-center gap-1.5 rounded px-1 transition-colors" style={{ color: 'var(--text-muted)', fontSize: '0.9375rem' }}>
                 <ArrowLeft style={{ width: '1rem', height: '1rem' }} /> {builderT('backToDecks')}
-                </BackLink>
-                <h1 className="sr-only">{editMode ? builderT('titleEdit') : builderT('titleNew')}</h1>
-                <p className="sr-only">
-                  {builderT('description')}
-                </p>
-              </div>
-              <div className="deck-workspace-actions flex flex-wrap items-center gap-2">
-                <div className="deck-workspace-code">
-                  <input
-                    type="text"
-                    value={codeInput}
-                    onChange={e => { setCodeInput(e.target.value); setCodeError(false) }}
-                    placeholder={builderT('fields.codePlaceholder')}
-                    aria-label={builderT('fields.deckCode')}
-                    aria-invalid={codeError}
-                    className="min-h-10 min-w-0 flex-1 rounded px-3 outline-none sm:min-h-11"
-                    style={{ background: 'var(--bg-elevated)', border: `1px solid ${codeError ? 'var(--error)' : 'var(--border)'}`, color: 'var(--text-primary)', fontSize: '0.9375rem', fontFamily: 'var(--font-mono)' }}
-                    onKeyDown={e => { if (e.key === 'Enter') handleApplyCode() }}
-                  />
-                  <Button size="sm" variant="outline" onClick={handleApplyCode} disabled={!codeInput.trim() || codeApplying}>
-                    {codeApplying ? builderT('fields.applying') : builderT('fields.applyCode')}
-                  </Button>
-                  {codeError && <span role="alert" className="deck-workspace-code-error">{builderT('fields.codeError')}</span>}
-                </div>
-                <Button size="sm" icon={Download} onClick={() => setImportOpen(true)} variant="secondary">{tImport('fromPlan')}</Button>
-                <SeriesPicker kind="deck" postId={editMode?.deckId} onChange={setSeriesChoice} />
-                <TempSaveMenu title={tTempSaves('deckMenuLabel')} slots={draftSlots} onSave={handleSaveDraft} onLoad={handleLoadDraft} onDelete={handleDeleteDraft} />
-                <Button
-                  size="sm"
-                  icon={codeCopied ? Check : Copy}
-                  onClick={handleCopyCode}
-                  disabled={identityCount < 12}
-                  variant="secondary"
-                  title={identityCount < 12 ? builderT('actions.copyDisabled') : undefined}
-                >
-                  {codeCopied ? builderT('actions.copied') : builderT('actions.copyCode')}
-                </Button>
-                <Button
-                  size="sm"
-                  icon={Upload}
-                  onClick={handleSave}
-                  disabled={authStatus === 'loading' || !title.trim() || identityCount < 12 || !contentType || saving}
-                  variant="primary"
-                  title={!contentType ? builderT('actions.contentRequired') : identityCount < 12 ? builderT('actions.identityRequired', { count: identityCount, total: sinners.length }) : undefined}
-                >
-                  {saving ? builderT('actions.saving') : editMode ? builderT('actions.save') : builderT('actions.upload')}
-                </Button>
-                {/* 로그인 확인 전에도 줄 자리를 잡아 둔다(늦게 끼어들면 아래 편성판이 밀린다) */}
-                {authStatus !== 'authenticated' && (
-                  <div className="flex w-full flex-wrap items-center justify-end gap-x-4 gap-y-2 text-[0.8125rem] text-[var(--text-muted)]" style={authStatus === 'loading' ? { visibility: 'hidden' } : undefined}>
-                    <p>
-                      {getGuestCopy(locale).saveHint}{' '}
-                      <Link href="/guest" className="text-[var(--gold-light)] underline-offset-4 hover:underline">{getGuestCopy(locale).manage}</Link>
-                    </p>
-                    {!editMode && (
-                      <label className="flex items-center gap-2 font-semibold text-[var(--text-secondary)]">
-                        {getGuestCopy(locale).pin}
-                        <GuestPinInput value={pin} onChange={setPin} locale={locale} className="h-8 w-32 rounded px-3 outline-none"
-                          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: '0.875rem' }} />
-                      </label>
-                    )}
-                  </div>
-                )}
-              </div>
+              </BackLink>
+              <h1 className="sr-only">{editMode ? builderT('titleEdit') : builderT('titleNew')}</h1>
+              <p className="sr-only">
+                {builderT('description')}
+              </p>
             </div>
-
-            <div className="deck-workspace-fields">
-              <label className="flex min-w-0 flex-col gap-1.5">
-                <span className="font-mono" style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{builderT('fields.title')}</span>
-                <input
-                  type="text"
-                  placeholder={builderT('fields.titlePlaceholder')}
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  className="min-h-10 w-full rounded px-3 outline-none sm:min-h-11"
-                  style={{
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-primary)',
-                    fontSize: '1rem',
-                    transition: 'border-color 0.2s',
-                  }}
-                  onFocus={e => (e.target.style.borderColor = 'var(--gold)')}
-                  onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-                />
-              </label>
-
-
-              <div className="min-w-0">
-                <div className="mb-1.5 flex items-center gap-2">
-                  <span className="font-mono" style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{builderT('fields.contentType')}</span>
-                  {!contentType && <span style={{ color: 'var(--warning)', fontSize: '0.875rem', opacity: 0.85 }}>{builderT('fields.required')}</span>}
-                </div>
-                <Dropdown value={contentType} onChange={setContentType} ariaLabel={builderT('fields.contentType')} options={[{value:'',label:builderT('fields.contentType')},...CONTENT_TYPES.map(ct=>({value:ct,label:deckT(`contentTypes.${contentTypeMessageKey(ct)}`)}))]} buttonStyle={{minHeight:'2.75rem',width:'100%',fontSize:'.9375rem'}} />
-              </div>
+            <div className="deck-workspace-actions">
+              <TempSaveMenu title={tTempSaves('deckMenuLabel')} slots={draftSlots} onSave={handleSaveDraft} onLoad={handleLoadDraft} onDelete={handleDeleteDraft} />
+              <Button
+                size="sm"
+                icon={codeCopied ? Check : Copy}
+                onClick={handleCopyCode}
+                disabled={identityCount < 12}
+                variant="secondary"
+                title={identityCount < 12 ? builderT('actions.copyDisabled') : undefined}
+              >
+                <span className="max-sm:sr-only">{codeCopied ? builderT('actions.copied') : builderT('actions.copyCode')}</span>
+              </Button>
+              <Button
+                size="sm"
+                icon={Upload}
+                onClick={handleSave}
+                disabled={authStatus === 'loading' || !title.trim() || identityCount < 12 || !contentType || saving}
+                variant="primary"
+                title={!contentType ? builderT('actions.contentRequired') : identityCount < 12 ? builderT('actions.identityRequired', { count: identityCount, total: sinners.length }) : undefined}
+              >
+                {saving ? builderT('actions.saving') : editMode ? builderT('actions.save') : builderT('actions.upload')}
+              </Button>
             </div>
+          </div>
+          {/* 로그인 확인 전에도 줄 자리를 잡아 둔다(늦게 끼어들면 아래 편성판이 밀린다) */}
+          {authStatus !== 'authenticated' && (
+            <div className="deck-workspace-guest" style={authStatus === 'loading' ? { visibility: 'hidden' } : undefined}>
+              <p>
+                {getGuestCopy(locale).saveHint}{' '}
+                <Link href="/guest" className="text-[var(--gold-light)] underline-offset-4 hover:underline">{getGuestCopy(locale).manage}</Link>
+              </p>
+              {!editMode && (
+                <label className="flex items-center gap-2 font-semibold text-[var(--text-secondary)]">
+                  {getGuestCopy(locale).pin}
+                  <GuestPinInput value={pin} onChange={setPin} locale={locale} className="h-8 w-32 rounded px-3 outline-none"
+                    style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: '0.875rem' }} />
+                </label>
+              )}
+            </div>
+          )}
+
+          <div className="deck-workspace-fields">
+            <label className="deck-workspace-fields__title">
+              <span className="font-mono" style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{builderT('fields.title')}</span>
+              <input
+                type="text"
+                placeholder={builderT('fields.titlePlaceholder')}
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                className="min-h-12 w-full rounded px-3 outline-none"
+                style={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-primary)',
+                  fontSize: '1.25rem',
+                  transition: 'border-color 0.2s',
+                }}
+                onFocus={e => (e.target.style.borderColor = 'var(--gold)')}
+                onBlur={e => (e.target.style.borderColor = 'var(--border)')}
+              />
+            </label>
+
+            <div className="deck-workspace-fields__type">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="font-mono" style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{builderT('fields.contentType')}</span>
+                {!contentType && <span style={{ color: 'var(--warning)', fontSize: '0.875rem', opacity: 0.85 }}>{builderT('fields.required')}</span>}
+              </div>
+              <Dropdown value={contentType} onChange={setContentType} ariaLabel={builderT('fields.contentType')} options={[{value:'',label:builderT('fields.contentType')},...CONTENT_TYPES.map(ct=>({value:ct,label:deckT(`contentTypes.${contentTypeMessageKey(ct)}`)}))]} buttonStyle={{minHeight:'3rem',width:'100%',fontSize:'.9375rem'}} />
+            </div>
+            <SeriesPicker kind="deck" postId={editMode?.deckId} onChange={setSeriesChoice} />
           </div>
         </header>
 
-        <div className="deck-workspace-formation">
-        {/* 탭 바 — 밑줄 인디케이터 (플래너 패턴) */}
-        <UnderlineTabBar
-          tabs={tabItems}
-          activeKey={tab}
-          onTabChange={key => setTab(key as Tab)}
-          className="mb-4"
+        <PlanSectionNav
+          label={detailT('sectionNav')}
+          className="sticky-under-nav deck-section-nav"
+          sections={builderSections(hasInsights).map(section => ({ id: builderSectionId(section), label: sectionLabels[section] }))}
+          onSelect={id => { if (id === builderSectionId('note')) setNoteOpen(true) }}
         />
 
-        {/* 탭 콘텐츠 */}
-        {tab === 'identity' && (
-          <m.section
-            key="identity"
-            className="deck-builder-identity-section"
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          >
+        <DeckSection section="formation" title={sectionLabels.formation}>
+          <div className="deck-subtabs"><DeckSubTabs subTab={tab} onChange={key => setTab(key)} formationCount={formationOrder.length} /></div>
 
+          {tab === 'identity' && (
+            <m.section
+              key="identity"
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <DeckMainKeywords counts={deckKeywordCounts} effectiveKeywords={effectiveMainKeywords} onToggle={handleMainKeywordToggle} label={deckT('filters.alwaysKeywords')} />
+              <IdentityTab
+                sinners={sinners}
+                identities={identities}
+                deckSlots={deckSlots}
+                upties={upties}
+                egoSlots={egoSlots}
+                skillsByIdentityId={skillsByIdentityId}
+                skillDistribution={skillDistribution}
+                formationOrder={formationOrder}
+                onFormationToggle={handleFormationToggle}
+                onFormationReset={() => setFormationOrder([])}
+                onApplyCode={handleApplyCode}
+                onImport={{ label: tImport('fromPlan'), open: () => setImportOpen(true) }}
+                onIdentitySelect={(identity, uptie) => {
+                  if (!identity) return
+                  setDeckSlots(prev => ({ ...prev, [identity.sinner_id]: identity }))
+                  setUpties(prev => ({ ...prev, [identity.sinner_id]: uptie }))
+                }}
+              />
+            </m.section>
+          )}
+          {tab === 'ego' && (
+            <m.div
+              key="ego"
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <EgoTab
+                sinners={sinners}
+                egos={egos}
+                egoSlots={egoSlots}
+                identities={identities}
+                identityIds={Object.fromEntries(Object.entries(deckSlots).map(([sinnerId, identity]) => [sinnerId, identity?.id]))}
+                lang={locale as SupportedLang}
+                onEgoSelect={ego => {
+                  setEgoSlots(prev => ({
+                    ...prev,
+                    [ego.sinner_id]: { ...(prev[ego.sinner_id] ?? {}), [ego.grade]: ego }
+                  }))
+                }}
+                onEgoDeselect={(sinnerId, grade) => {
+                  if (grade === 'ZAYIN') return
+                  setEgoSlots(prev => {
+                    const s = { ...(prev[sinnerId] ?? {}) }
+                    delete s[grade]
+                    return { ...prev, [sinnerId]: s }
+                  })
+                }}
+              />
+            </m.div>
+          )}
+          {tab === 'skillset' && (
+            <m.div
+              key="skillset"
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <SkillsetTab
+                sinners={sinners}
+                deckSlots={deckSlots}
+                upties={upties}
+                skillsByIdentityId={skillsByIdentityId}
+                skillDistribution={skillDistribution}
+                onDistributionChange={(sinnerId, dist) =>
+                  setSkillDistribution(prev => ({ ...prev, [sinnerId]: dist }))
+                }
+              />
+            </m.div>
+          )}
+        </DeckSection>
 
-            <IdentityTab
-              sinners={sinners}
-              identities={identities}
-              deckSlots={deckSlots}
-              upties={upties}
-              egoSlots={egoSlots}
-              skillsByIdentityId={skillsByIdentityId}
-              skillDistribution={skillDistribution}
-              mainKeywordCounts={deckKeywordCounts}
-              selectedMainKeywords={effectiveMainKeywords}
-              maxMainKeywords={MAX_DECK_MAIN_KEYWORDS}
-              mainKeywordLabel={deckT('filters.alwaysKeywords')}
-              formationOrder={formationOrder}
-              onFormationToggle={handleFormationToggle}
-              onFormationReset={() => setFormationOrder([])}
-              onMainKeywordToggle={handleMainKeywordToggle}
-              onIdentitySelect={(identity, uptie) => {
-                if (!identity) return
-                setDeckSlots(prev => ({ ...prev, [identity.sinner_id]: identity }))
-                setUpties(prev => ({ ...prev, [identity.sinner_id]: uptie }))
-              }}
+        {/* 키워드 분포 + 패시브 + 공격 유형/죄악 자원 (플래너와 같은 패널) */}
+        {hasInsights && (
+          <DeckSection section="analysis" title={sectionLabels.analysis}>
+            <DeckInsights
+              identities={deckInsights.identities}
+              deployedIds={deckInsights.deployedIds}
+              sinCounts={deckInsights.sinCounts}
+              baseSinCounts={deckInsights.baseSinCounts}
+              summary={deckInsights.summary}
             />
-
-          </m.section>
-        )}
-        {tab === 'ego' && (
-          <m.div
-            key="ego"
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <EgoTab
-              sinners={sinners}
-              egos={egos}
-              egoSlots={egoSlots}
-              identities={identities}
-              identityIds={Object.fromEntries(Object.entries(deckSlots).map(([sinnerId, identity]) => [sinnerId, identity?.id]))}
-              lang={locale as SupportedLang}
-              onEgoSelect={ego => {
-                setEgoSlots(prev => ({
-                  ...prev,
-                  [ego.sinner_id]: { ...(prev[ego.sinner_id] ?? {}), [ego.grade]: ego }
-                }))
-              }}
-              onEgoDeselect={(sinnerId, grade) => {
-                if (grade === 'ZAYIN') return
-                setEgoSlots(prev => {
-                  const s = { ...(prev[sinnerId] ?? {}) }
-                  delete s[grade]
-                  return { ...prev, [sinnerId]: s }
-                })
-              }}
-            />
-          </m.div>
-        )}
-        {tab === 'skillset' && (
-          <m.div
-            key="skillset"
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <SkillsetTab
-              sinners={sinners}
-              deckSlots={deckSlots}
-              upties={upties}
-              skillsByIdentityId={skillsByIdentityId}
-              skillDistribution={skillDistribution}
-              onDistributionChange={(sinnerId, dist) =>
-                setSkillDistribution(prev => ({ ...prev, [sinnerId]: dist }))
-              }
-            />
-          </m.div>
-        )}
-        {/* 편성 순서 탭 → 인격 탭 40%/60% 호버로 통합 */}
-
-        {/* ── 키워드 분포 + 패시브 + 공격 유형/죄악 자원 (플래너와 같은 패널) ── */}
-        {tab !== 'note' && deckInsights.identities.length > 0 && (
-          <DeckInsights
-            identities={deckInsights.identities}
-            deployedIds={deckInsights.deployedIds}
-            sinCounts={deckInsights.sinCounts}
-            baseSinCounts={deckInsights.baseSinCounts}
-            summary={deckInsights.summary}
-          />
+          </DeckSection>
         )}
 
-        {/* 덱 노트 */}
-        {tab === 'note' && (
-          <m.div
-            key="note"
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <DeckNoteEditor
+        <DeckSection section="note" title={sectionLabels.note}>
+          {/* The height is kept from the start, so the bar's scroll target does not move when the editor arrives. */}
+          <div ref={noteHolder} className="deck-section__note">
+            {showNote ? <DeckNoteEditor
               sinners={sinners}
               identities={identities}
               deckSlots={deckSlots}
@@ -477,21 +468,9 @@ export default function DeckBuilderClient({ sinners, identities, egos, skills, p
               setDescription={setDescription}
               descPreview={descPreview}
               setDescPreview={setDescPreview}
-            />
-          </m.div>
-        )}
-        </div>
-
-        <style jsx global>{`
-          @media (max-width: 639px) {
-            .deck-builder-identity-section {
-              padding: 0.625rem;
-              border: 1px solid rgba(200, 144, 10, 0.12);
-              border-radius: 0.5rem;
-              background: rgba(18, 14, 9, 0.42);
-            }
-          }
-        `}</style>
+            /> : null}
+          </div>
+        </DeckSection>
       </div>
 
       {/* Toast는 Sonner가 글로벌로 처리 */}

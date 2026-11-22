@@ -27,9 +27,9 @@ loadEnvConfig(process.cwd());
 
   await page.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.images].filter(i=>i.getBoundingClientRect().top<innerHeight).map(i=>i.decode().catch(()=>{})))});
   await page.screenshot({path:out+'/deck-desktop.png',fullPage:true});
-  const buttons=await page.locator('.deck-workspace-actions>button').evaluateAll(items=>items.map(item=>{const r=item.getBoundingClientRect();return {y:r.y,width:r.width,height:r.height}}));
-  assert(buttons.length>=3);assert(buttons.every(r=>Math.abs(r.y-buttons[0].y)<1 && Math.abs(r.width-buttons[0].width)<1 && r.height===buttons[0].height));
-  await page.getByRole('tab',{name:'덱 노트',exact:true}).click();
+  const buttons=await page.locator('.deck-workspace-actions>button,.deck-workspace-actions>div:first-child>button:first-child').evaluateAll(items=>items.map(item=>{const r=item.getBoundingClientRect();return {y:r.y,width:r.width,height:r.height}}));
+  assert.equal(buttons.length,3);assert(buttons.every(r=>Math.abs(r.y-buttons[0].y)<1 && r.height===buttons[0].height));
+  await page.getByRole('link',{name:'덱 노트',exact:true}).click();
   await page.locator('.note-document-content').waitFor();
   await page.getByRole('button',{name:'스킬 추가',exact:true}).click();
   await page.locator('.note-direct-item').first().waitFor();

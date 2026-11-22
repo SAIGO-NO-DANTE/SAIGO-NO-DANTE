@@ -57,7 +57,7 @@ test('deck creation uses a small formation label and original EGO rank images', 
   await expect(label.locator('img')).toHaveCount(0)
   await expect(label).toContainText('1')
   await page.screenshot({ path: info.outputPath('deck-selection.png'), fullPage: true })
-  await page.getByRole('tab', { name: /E.G.O 편성/ }).click()
+  await page.getByRole('tab', { name: 'E.G.O', exact: true }).click()
   const rank = page.locator('img[src*="rank-banners/zayin.webp"]').first()
   await expect(rank).toBeVisible()
   await rank.evaluate((img: HTMLImageElement) => img.decode())

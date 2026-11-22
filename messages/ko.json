@@ -311,9 +311,7 @@
       "progress": "인격 {count}/{total}",
       "forkTitle": "{title} (포크)",
       "tabs": {
-        "identity": "인격 편성",
-        "ego": "E.G.O 편성",
-        "skillset": "스킬 편성",
+        "analysis": "분석",
         "note": "덱 노트"
       },
       "actions": {
@@ -329,11 +327,6 @@
       "fields": {
         "title": "덱 제목",
         "titlePlaceholder": "덱 제목을 입력하세요",
-        "deckCode": "편성 코드",
-        "codePlaceholder": "편성 코드 붙여넣기",
-        "applyCode": "적용",
-        "applying": "적용 중",
-        "codeError": "코드 오류",
         "contentType": "콘텐츠 유형",
         "required": "필수"
       },

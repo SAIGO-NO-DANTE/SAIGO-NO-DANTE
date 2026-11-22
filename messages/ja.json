@@ -311,9 +311,7 @@
       "progress": "人格 {count}/{total}",
       "forkTitle": "{title}（フォーク）",
       "tabs": {
-        "identity": "人格編成",
-        "ego": "E.G.O編成",
-        "skillset": "スキル編成",
+        "analysis": "分析",
         "note": "デッキノート"
       },
       "actions": {
@@ -329,11 +327,6 @@
       "fields": {
         "title": "デッキ名",
         "titlePlaceholder": "デッキ名を入力",
-        "deckCode": "編成コード",
-        "codePlaceholder": "編成コードを貼り付け",
-        "applyCode": "適用",
-        "applying": "適用中",
-        "codeError": "コードエラー",
         "contentType": "コンテンツ種別",
         "required": "必須"
       },

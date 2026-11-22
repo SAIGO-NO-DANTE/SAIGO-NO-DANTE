@@ -1,23 +1,50 @@
-/* Deck authoring: compact controls above the existing tabs. */
-.deck-workspace-formation{min-width:0;padding:.5rem 0}
+/* Deck authoring: the post's fields on top, then one scrolling page of sections under a sticky section bar. */
+/* A touch target is 44px; on phones the root font is 15px, so 2.75rem alone falls short. */
+.deck-workspace{--deck-touch:max(2.75rem,44px)}
 .deck-workspace .planner-deck-identity-grid{column-gap:1rem;row-gap:1.5rem}
 @media(min-width:80rem){
-  .deck-workspace>header>div{display:grid;grid-template-columns:1fr;gap:.5rem}
   .deck-workspace .planner-deck-identity-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
 }
-.deck-workspace-header{display:grid;gap:.75rem;align-items:center}
-.deck-workspace-heading{display:contents}
-.deck-workspace-actions{grid-row:3;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.5rem}
-.deck-workspace-code{display:flex;flex:1 1 18rem;min-width:min(100%,18rem);flex-wrap:wrap;gap:.25rem .5rem}
-.deck-workspace-code-error{flex-basis:100%;color:var(--error);font-size:.75rem}
-.deck-workspace-actions>button{min-height:2.5rem;justify-content:center;white-space:nowrap}
-.deck-workspace-fields{display:grid;gap:.75rem}
-.deck-workspace-formation>.min-w-0{margin-top:1rem;border-top:1px solid var(--border);padding-top:.75rem}
-@media(min-width:80rem){
-  .deck-workspace>header>.deck-workspace-header{grid-template-columns:6rem minmax(0,1fr);gap:1rem}
-  .deck-workspace-fields{grid-column:2;grid-row:1;grid-template-columns:minmax(12rem,1fr) 12rem;align-items:end}
-  .deck-workspace-actions{grid-column:2;grid-row:2;width:100%}
-  .deck-workspace-header .min-h-10,.deck-workspace-header .sm\:min-h-11{min-height:2.25rem}
-  .deck-workspace-fields button{font-size:.8125rem!important;padding-inline:.625rem}
-  .deck-workspace-header a{font-size:.75rem!important;min-height:1.75rem}
+
+/* Row 1: back link left, draft menu, code copy and upload right. The guest hint has its own line under it. Row 2: title, content type, series. */
+.deck-workspace-header{display:grid;gap:.5rem;padding:.5rem 0 1.25rem}
+.deck-workspace-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.25rem 1rem}
+.deck-workspace-back{min-height:var(--deck-touch)}
+.deck-workspace-actions{display:flex;align-items:center;justify-content:flex-end;gap:.5rem;min-width:0}
+.deck-workspace-actions>button,.deck-workspace-actions>div:first-child>button:first-child{min-height:var(--deck-touch);justify-content:center;white-space:nowrap}
+@media(max-width:39.99rem){.deck-workspace-actions>button{min-width:var(--deck-touch)}}
+.deck-workspace-guest{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:.5rem 1rem;color:var(--text-muted);font-size:.8125rem}
+.deck-workspace-fields{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.75rem}
+.deck-workspace-fields__title{display:flex;flex:1 1 20rem;min-width:0;flex-direction:column;gap:.375rem}
+.deck-workspace-fields__type{flex:0 1 12rem;min-width:min(100%,10rem)}
+.deck-workspace-fields>button{min-height:3rem;white-space:nowrap}
+
+/* The section bar: the plan page's tabs, sideways on a phone. */
+.deck-section-nav{z-index:30;margin:0 -.75rem;padding:0 .75rem;background:var(--bg-deep);border-bottom:1px solid #5a4526}
+@media(min-width:40rem){.deck-section-nav{margin:0 -1.5rem;padding:0 1.5rem}}
+/* Sideways only: the underline sits 1px low over the bar's border; the list keeps that pixel in its padding so a wheel over it scrolls the page. */
+.deck-section-nav ol{display:flex;gap:.25rem;overflow-x:auto;overflow-y:hidden;padding-bottom:1px;margin-bottom:-1px;scrollbar-width:none}
+.deck-section-nav ol::-webkit-scrollbar{display:none}
+.deck-section-nav a{display:inline-flex;align-items:center;gap:.375rem;min-height:max(3rem,44px);padding:0 .75rem;margin-bottom:-1px;border-bottom:2px solid transparent;color:#a8977d;font-size:.9375rem;white-space:nowrap;transition:color 150ms ease,border-color 150ms ease}
+.deck-section-nav a:first-child{padding-left:0}
+.deck-section-nav a:hover{color:var(--text-primary)}
+.deck-section-nav a[aria-current]{border-bottom-color:var(--gold);color:var(--text-primary);font-weight:600}
+.deck-section-nav a:focus-visible{outline:2px solid var(--gold-light);outline-offset:-2px}
+@media(prefers-reduced-motion:reduce){.deck-section-nav a{transition:none}}
+
+/* Sections: a heading and one hairline, no boxes. The scroll margin follows the navbar (--nav-offset is 0 while it is hidden) plus the 3rem bar. */
+/* A fixed offset that clears the site nav and the section bar together: the nav slides back in while the page scrolls up, so an offset read at the click would leave the heading under the bar. */
+.deck-section{scroll-margin-top:5.5rem;min-width:0;padding-top:1.75rem}
+.deck-section+.deck-section{margin-top:2.5rem;padding-top:2.5rem;border-top:1px solid #2e2417}
+.deck-section__title{margin-bottom:1rem;color:var(--text-primary);font-family:var(--font-heading);font-size:1.375rem;line-height:1.5}
+/* The analysis panel draws its own top line and gap; the section already has them. */
+.deck-section .deck-insights{margin-top:0;padding-top:0;border-top:0}
+.deck-section__note{min-height:24rem}
+
+/* The planner's sub tabs and board tool row, with phone-size touch targets (the planner keeps its own sizes). */
+@media(max-width:39.99rem),(pointer:coarse){
+  .deck-subtabs [role="tab"]{min-height:var(--deck-touch)}
+  .deck-section .fboard__paste,.deck-section .fboard__reset{min-height:var(--deck-touch)}
+  .deck-section .fboard__code input,.deck-section .fboard__code button{height:var(--deck-touch)}
+  .deck-section .fboard__code .fboard__code-close{width:var(--deck-touch)}
 }

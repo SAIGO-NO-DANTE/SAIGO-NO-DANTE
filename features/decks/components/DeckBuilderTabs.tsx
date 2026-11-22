@@ -4,9 +4,6 @@ import { useSuggestionState } from '@/hooks/useSuggestions'
 import { LCB_IDS } from '@/lib/constants/game'
 import { identitySuggestUrl, suggestionContext, type SuggestionResponse } from '@/lib/community/suggestion-types'
 import { useMemo, useState } from 'react'
-import Image from 'next/image'
-import { useReducedMotion } from 'motion/react'
-import * as m from 'motion/react-m'
 import {
   Sinner,
   Identity,
@@ -14,12 +11,9 @@ import {
   Skill,
 } from '@/lib/data/sinners'
 import { localizeIdentityName } from '@/lib/decks/localize'
-import { localizeDeckKeyword } from '@/lib/decks/decks-types'
-import { useKeywordData } from '@/components/providers/KeywordProvider'
 import { useLocale } from 'next-intl'
 import type { SupportedLang } from '@/lib/i18n/types'
 import { getLocalizedName } from '@/lib/i18n/localize'
-import { DECK_MAIN_KEYWORDS, MANUAL_ATTACK_MAIN_KEYWORDS } from '@/lib/decks/keyword-rules'
 import { SKILL_EXCHANGE_PRESETS } from '@/components/ui/SkillExchangePanel'
 import type { SkillCountEdit } from '@/components/cards/EgoSlotRows'
 import { buildStripSkills, toEgoSlotItems } from '@/features/decks/lib/strip-skills'
@@ -77,8 +71,7 @@ function builderBoardSlots({ sinners, deckSlots, upties, formationOrder = [], sk
 /* ── 탭 1: 인격 편성 (플래너 패턴: 40% 변경 / 60% 편성 토글) ── */
 export function IdentityTab({
   sinners, identities, deckSlots, upties, egoSlots, skillsByIdentityId, skillDistribution,
-  formationOrder, onFormationToggle, onFormationReset, onIdentitySelect,
-  mainKeywordCounts, selectedMainKeywords, maxMainKeywords, mainKeywordLabel, onMainKeywordToggle,
+  formationOrder, onFormationToggle, onFormationReset, onApplyCode, onImport, onIdentitySelect,
 }: {
   sinners: Sinner[]
   identities: Identity[]
@@ -88,20 +81,15 @@ export function IdentityTab({
   egoSlots: Record<string, Record<string, EGO>>
   skillsByIdentityId: Record<string, Skill[]>
   skillDistribution: Record<string, [number, number, number]>
-  mainKeywordCounts: Record<string, number>
-  selectedMainKeywords: string[]
-  maxMainKeywords: number
-  mainKeywordLabel: string
   formationOrder: string[]
   onFormationToggle: (sinnerId: string) => void
   onFormationReset: () => void
-  onMainKeywordToggle: (keyword: string) => void
+  onApplyCode: (code: string) => Promise<boolean>
+  onImport: { label: string; open: () => void }
   onIdentitySelect: (identity: Identity, uptie: number) => void
 }) {
   const [modalSinnerId, setModalSinnerId] = useState<string | null>(null)
   const locale = useLocale() as SupportedLang
-  const { getIconUrl, keywords: keywordInfo } = useKeywordData()
-  const reduceMotion = useReducedMotion()
   const modalSinner = modalSinnerId ? sinners.find(s => s.id === modalSinnerId) ?? null : null
   // Suggestions follow every identity already chosen on the board beside the slot being picked, with or without a formation number.
   const lcbIds = useMemo(() => new Set(identities.filter(identity => identity.game_id === LCB_IDS[identity.sinner_id]).map(identity => identity.id)), [identities])
@@ -126,69 +114,10 @@ export function IdentityTab({
       onOpenIdentityModal={openIdentityModal}
       onFormationToggle={onFormationToggle}
       onResetOrder={onFormationReset}
+      onApplyCode={onApplyCode}
+      onImport={onImport}
       getSinnerName={sinner => getDeckBuilderSinnerName(sinner as Sinner, locale)}
     />
-
-    <div className="deck-builder-pinned-keywords" aria-label={mainKeywordLabel}>
-      {DECK_MAIN_KEYWORDS.map(keyword => {
-        const iconUrl = getIconUrl(keyword)
-        const count = mainKeywordCounts[keyword] ?? 0
-        const selected = selectedMainKeywords.includes(keyword)
-        const isManualAttackKeyword = MANUAL_ATTACK_MAIN_KEYWORDS.has(keyword)
-        const disabled = (!isManualAttackKeyword && count <= 0) || (!selected && selectedMainKeywords.length >= maxMainKeywords)
-        const keywordLabel = localizeDeckKeyword(keyword, keywordInfo[keyword], locale)
-        const accessibleName = isManualAttackKeyword ? keywordLabel : `${keywordLabel} ${count}`
-        return (
-          <m.button
-            key={keyword}
-            type="button"
-            className="deck-builder-pinned-keyword"
-            data-selected={selected}
-            disabled={disabled}
-            onClick={() => onMainKeywordToggle(keyword)}
-            aria-pressed={selected}
-            aria-label={accessibleName}
-            title={accessibleName}
-            whileHover={reduceMotion || disabled ? undefined : { y: -1 }}
-            whileTap={reduceMotion || disabled ? undefined : { scale: 0.985 }}
-            transition={{ type: 'spring', stiffness: 430, damping: 32, mass: 0.5 }}
-          >
-            {iconUrl && (
-              <Image
-                src={iconUrl}
-                alt=""
-                width={16}
-                height={16}
-                className="deck-builder-pinned-keyword__icon"
-              />
-            )}
-            <span>{keywordLabel}</span>
-            {!isManualAttackKeyword && (
-              <span className="deck-builder-pinned-keyword__count">{count}</span>
-            )}
-          </m.button>
-        )
-      })}
-    </div>
-
-    <style jsx global>{`
-      .deck-builder-pinned-keywords { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; margin: 0.625rem 0 0; }
-      .deck-builder-pinned-keyword {
-        display: inline-flex; flex: 0 0 auto; max-width: 100%; min-height: 2.25rem; align-items: center; gap: 0.3125rem;
-        padding: 0 0.625rem; border: 1px solid transparent; border-radius: 999px; background: rgba(232, 220, 200, 0.04);
-        color: #9c8b73; cursor: pointer; font-family: var(--font-body), var(--font-sans); font-size: 0.8125rem; line-height: 1;
-        transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, opacity 0.18s ease;
-      }
-      .deck-builder-pinned-keyword:hover:not(:disabled) { background: rgba(232, 220, 200, 0.08); color: #e8dcc8; }
-      .deck-builder-pinned-keyword:focus-visible { outline: 2px solid #e8b030; outline-offset: 2px; }
-      .deck-builder-pinned-keyword[data-selected="true"] { border-color: rgba(200, 144, 10, 0.45); background: rgba(200, 144, 10, 0.14); color: #e8b030; }
-      .deck-builder-pinned-keyword:disabled { cursor: not-allowed; opacity: 0.38; }
-      .deck-builder-pinned-keyword__icon { flex: 0 0 auto; width: 0.875rem; height: 0.875rem; object-fit: contain; }
-      .deck-builder-pinned-keyword__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .deck-builder-pinned-keyword__count { color: inherit; font-size: 0.75rem; font-variant-numeric: tabular-nums; opacity: 0.7; }
-      @media (pointer: coarse) { .deck-builder-pinned-keyword { min-height: 2.75rem; } }
-      @media (prefers-reduced-motion: reduce) { .deck-builder-pinned-keyword { transition: none; } }
-    `}</style>
 
     {/* ── 인격 선택 모달 (플래너 패턴) ── */}
     <PlannerIdentitySelectModal
